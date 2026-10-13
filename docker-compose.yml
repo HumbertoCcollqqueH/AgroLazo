@@ -1,0 +1,190 @@
+name: agroconecta
+
+x-logging: &default-logging
+  driver: local
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-app: &app-base
+  image: agroconecta-app:local
+  build:
+    context: ./docker/php
+    dockerfile: Dockerfile
+  working_dir: /var/www/html
+  volumes:
+    - ./application:/var/www/html
+    - php_vendor:/var/www/html/vendor
+    - bootstrap_cache:/var/www/html/bootstrap/cache
+    - framework_cache:/var/www/html/storage/framework
+    - ./docker/php/local-performance.conf:/usr/local/etc/php-fpm.d/zzz-local-performance.conf:ro
+  networks:
+    - application
+    - data
+  init: true
+  restart: unless-stopped
+  stop_grace_period: 90s
+  logging: *default-logging
+
+services:
+  assets:
+    image: node:22-bookworm-slim@sha256:48e4b67d85f87bd551df43704e24d252f56cc5f8e9718841aace50f19948f0f9
+    profiles: [tools]
+    working_dir: /app
+    volumes:
+      - ./application:/app
+      - php_vendor:/app/vendor:ro
+      - node_modules:/app/node_modules
+    command: [sh, -ec, 'npm ci --ignore-scripts --no-audit && npm run build']
+
+  app:
+    <<: *app-base
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - SCRIPT_NAME=/ping SCRIPT_FILENAME=/ping REQUEST_METHOD=GET cgi-fcgi -bind -connect 127.0.0.1:9000 | grep -q pong
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  nginx:
+    image: nginx:stable-bookworm@sha256:552e7481ca93ffccd046aa658dbbed22caefbc09c66fa7cd247cbb90b8a5c609
+    ports:
+      - "127.0.0.1:${APP_PORT:-8080}:80"
+      - "[::1]:${APP_PORT:-8080}:80"
+    volumes:
+      - ./application/public:/var/www/html/public:ro
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - application
+    depends_on:
+      app:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "--output", "/dev/null", "http://127.0.0.1/up"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    logging: *default-logging
+
+  postgres:
+    image: postgres:18-bookworm@sha256:1c59e2c3c818eaa0f0628f695b36e7c9e362d6b219b36a54a32df645cbd7e1af
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-agroconecta}
+      POSTGRES_USER: ${DB_USERNAME:-agroconecta}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Define DB_PASSWORD in the root .env file}
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    networks:
+      - data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - PGPASSWORD="$$POSTGRES_PASSWORD" psql --host=127.0.0.1 --username="$$POSTGRES_USER" --dbname="$$POSTGRES_DB" --no-password --tuples-only --command='SELECT 1' >/dev/null 2>&1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    logging: *default-logging
+
+  redis:
+    image: redis:8-bookworm@sha256:c22af04bb576503bf16b3e34a1fd2fd82de0f765afd866d2e380145e0af30d78
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Define REDIS_PASSWORD in the root .env file}
+    command:
+      - sh
+      - -ec
+      - |
+        case "$$REDIS_PASSWORD" in
+          *[!A-Za-z0-9_-]*|'') echo 'REDIS_PASSWORD must contain only letters, digits, underscores or hyphens.' >&2; exit 1 ;;
+        esac
+        umask 077
+        printf '%s\n' \
+          'bind 0.0.0.0' \
+          'protected-mode yes' \
+          "requirepass $$REDIS_PASSWORD" \
+          'dir /data' \
+          'appendonly yes' \
+          'appendfsync everysec' \
+          'save 60 1000' \
+          'maxmemory 256mb' \
+          'maxmemory-policy noeviction' \
+          > /tmp/agroconecta-redis.conf
+        chown redis:redis /tmp/agroconecta-redis.conf
+        exec docker-entrypoint.sh redis-server /tmp/agroconecta-redis.conf
+    volumes:
+      - redis_data:/data
+    networks:
+      - data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli --no-auth-warning ping | grep -q PONG
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+    logging: *default-logging
+
+  # Activate these processes explicitly after the initial migration succeeds.
+  queue:
+    <<: *app-base
+    profiles: [workers]
+    command: ["php", "artisan", "queue:work", "redis", "--queue=default", "--sleep=1", "--tries=3", "--backoff=5", "--timeout=60", "--max-time=3600"]
+    depends_on:
+      app:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  scheduler:
+    <<: *app-base
+    profiles: [workers]
+    command: ["php", "artisan", "schedule:work"]
+    depends_on:
+      app:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  mailpit:
+    image: axllent/mailpit@sha256:98b916bd3c8d61f7633a52d3ea2f58d00620cb01ca57ab59edde68c347a95365
+    profiles: [mail]
+    ports:
+      - "127.0.0.1:${MAILPIT_PORT:-8025}:8025"
+    environment:
+      MP_MAX_MESSAGES: "500"
+    networks:
+      - application
+    restart: unless-stopped
+    logging: *default-logging
+
+volumes:
+  node_modules:
+  php_vendor:
+  bootstrap_cache:
+  framework_cache:
+  postgres_data:
+  redis_data:
+
+networks:
+  application:
+    driver: bridge
+  data:
+    driver: bridge
+    internal: true

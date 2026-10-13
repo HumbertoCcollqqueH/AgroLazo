@@ -1,0 +1,32 @@
+<?php
+
+return [
+    'timezone' => 'America/Lima',
+    'currency' => 'PEN',
+    'demo_password' => env('DEMO_PASSWORD'),
+    'current_phase' => '17 fases validadas localmente · Docker de fase 20 preparado · Servidor y conexiones reales pendientes',
+    'auto_verification_enabled' => (bool) env('AUTO_VERIFICATION_ENABLED', false),
+    'milestones' => [
+        ['phase' => '00', 'name' => 'Análisis y arquitectura', 'status' => 'Entregado', 'complete' => true],
+        ['phase' => '01', 'name' => 'Entorno local', 'status' => 'Probado y operativo', 'complete' => true],
+        ['phase' => '02', 'name' => 'Usuarios y permisos', 'status' => 'Probado y operativo', 'complete' => true],
+        ['phase' => '03', 'name' => 'Catálogos y equivalencias', 'status' => 'Probado y operativo', 'complete' => true],
+        ['phase' => '04', 'name' => 'Productores y verificación', 'status' => 'Probado y operativo', 'complete' => true],
+        ['phase' => '05', 'name' => 'Ofertas agrícolas', 'status' => 'Probado y operativo', 'complete' => true],
+        ['phase' => '06', 'name' => 'Simulador y conversaciones', 'status' => 'Probado y operativo', 'complete' => true],
+        ['phase' => '07', 'name' => 'WhatsApp por Evolution: Meta o QR', 'status' => 'Adaptadores probados; vinculación y entrega real pendientes', 'complete' => false],
+        ['phase' => '08', 'name' => 'SMS mediante Twilio', 'status' => 'Adaptador probado; cobertura real pendiente', 'complete' => false],
+        ['phase' => '09', 'name' => 'Agrupación y lotes comerciales', 'status' => 'Probado y operativo', 'complete' => true],
+        ['phase' => '10', 'name' => 'Marketplace y estimación de cantidades', 'status' => 'Probado y operativo', 'complete' => true],
+        ['phase' => '11', 'name' => 'Precios y cotizaciones', 'status' => 'Probado con datos sintéticos', 'complete' => true],
+        ['phase' => '12', 'name' => 'Compras y reservas', 'status' => 'Probado, incluida concurrencia', 'complete' => true],
+        ['phase' => '13', 'name' => 'Acopio y avisos individuales', 'status' => 'Probado; entrega externa depende del canal', 'complete' => true],
+        ['phase' => '14', 'name' => 'Pesaje, logística y entregas', 'status' => 'Probado con datos sintéticos', 'complete' => true],
+        ['phase' => '15', 'name' => 'Cobros y liquidaciones manuales', 'status' => 'Probado; no ejecuta transferencias', 'complete' => true],
+        ['phase' => '16', 'name' => 'Trazabilidad y QR revocable', 'status' => 'Probado con proyección pública limitada', 'complete' => true],
+        ['phase' => '17', 'name' => 'Dashboard y reportes privados', 'status' => 'Excel, CSV y PDF probados; permisos y saldos conciliados', 'complete' => true],
+        ['phase' => '18', 'name' => 'Seguridad integral', 'status' => 'Controles locales probados; HTTPS desplegado pendiente en 20', 'complete' => true],
+        ['phase' => '19', 'name' => 'Pruebas integrales y restauración', 'status' => '347 pruebas aprobadas; recorrido de 220 kg y respaldo restaurado', 'complete' => true],
+        ['phase' => '20', 'name' => 'Cloud y operación de producción', 'status' => 'Docker preparado; faltan servidor, dominio y operación externa', 'complete' => false],
+    ],
+];

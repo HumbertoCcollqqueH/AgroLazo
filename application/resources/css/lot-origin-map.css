@@ -1,0 +1,15 @@
+.lot-origin-map {overflow:hidden;border:1px solid #dfe4da;border-radius:16px;background:#f8faf5;padding:14px;}
+.lot-origin-map canvas {display:block;width:100%;height:380px;border-radius:12px;touch-action:none;cursor:grab;}
+.lot-origin-map canvas:active {cursor:grabbing;}
+.lot-map-toolbar {display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;font-size:13px;flex-wrap:wrap;}
+.lot-map-toolbar button {background:white;border:1px solid #cdd8c7;border-radius:8px;min-width:40px;min-height:40px;padding:7px 12px;font-weight:600;}
+.lot-map-toolbar div {display:flex;gap:6px;}
+.lot-map-attribution {margin:8px 0;font-size:11px;color:#53634f;}
+.lot-map-attribution a {text-decoration:underline;}
+.lot-map-producers {display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px;margin-top:14px;}
+.lot-map-producers button {display:flex;align-items:center;gap:10px;background:white;border:1px solid #dfe4da;border-radius:10px;padding:12px;text-align:left;font-size:13px;}
+.lot-map-producers b {display:grid;place-items:center;width:28px;height:28px;flex-shrink:0;border-radius:50%;background:#174d38;color:white;}
+.lot-map-producers small {display:block;color:#63745d;margin-top:3px;}
+.lot-map-producers button[aria-pressed=true] {border-color:#bb6d20;background:#fff8ed;}
+.lot-map-producers button[aria-pressed=true] b {background:#bb6d20;}
+.lot-origin-map button:focus-visible,.lot-origin-map canvas:focus-visible {outline:3px solid #b4cd59;outline-offset:3px;}

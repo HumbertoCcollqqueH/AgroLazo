@@ -1,0 +1,166 @@
+# Optional Meta Cloud or QR transport. Always combine with docker-compose.yml.
+# No public ports; connection and QR access are restricted to AgroConecta administrators.
+x-evolution-logging: &evolution-logging
+  driver: local
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  evolution:
+    image: evoapicloud/evolution-api:v2.3.7@sha256:1bd8afc4a6cf48822e6cf02469aeae7bd35a12a6b616eacd1291926307f4d339
+    profiles: [messaging]
+    environment:
+      SERVER_TYPE: http
+      SERVER_PORT: "8080"
+      SERVER_URL: http://evolution:8080
+      SERVER_DISABLE_MANAGER: "true"
+      AUTHENTICATION_API_KEY: ${EVOLUTION_API_KEY:?Define EVOLUTION_API_KEY in the root .env file}
+      AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES: "false"
+      DATABASE_PROVIDER: postgresql
+      DATABASE_CONNECTION_URI: postgresql://evolution:${EVOLUTION_DB_PASSWORD:?Define EVOLUTION_DB_PASSWORD in the root .env file}@evolution-postgres:5432/evolution?schema=public
+      DATABASE_CONNECTION_CLIENT_NAME: agroconecta-evolution
+      DATABASE_SAVE_DATA_INSTANCE: "true"
+      DATABASE_SAVE_DATA_NEW_MESSAGE: "true"
+      DATABASE_SAVE_MESSAGE_UPDATE: "true"
+      DATABASE_SAVE_DATA_CONTACTS: "false"
+      DATABASE_SAVE_DATA_CHATS: "false"
+      DATABASE_SAVE_DATA_LABELS: "false"
+      DATABASE_SAVE_DATA_HISTORIC: "false"
+      DATABASE_SAVE_IS_ON_WHATSAPP: "false"
+      DATABASE_DELETE_MESSAGE: "true"
+      CACHE_REDIS_ENABLED: "true"
+      CACHE_REDIS_URI: redis://:${REDIS_PASSWORD:?Define REDIS_PASSWORD in the root .env file}@evolution-redis:6379/0
+      CACHE_REDIS_PREFIX_KEY: agroconecta-evolution
+      CACHE_REDIS_TTL: "86400"
+      CACHE_REDIS_SAVE_INSTANCES: "false"
+      CACHE_LOCAL_ENABLED: "false"
+      WA_BUSINESS_URL: https://graph.facebook.com
+      WA_BUSINESS_VERSION: ${META_GRAPH_VERSION:-v26.0}
+      WA_BUSINESS_LANGUAGE: es
+      WA_BUSINESS_TOKEN_WEBHOOK: ${EVOLUTION_WEBHOOK_SECRET:?Define EVOLUTION_WEBHOOK_SECRET in the root .env file}
+      WEBHOOK_GLOBAL_ENABLED: "false"
+      WEBHOOK_EVENTS_QRCODE_UPDATED: "false"
+      WEBHOOK_EVENTS_ERRORS: "false"
+      TELEMETRY_ENABLED: "false"
+      SENTRY_DSN: ""
+      METRICS_ENABLED: "false"
+      LOG_LEVEL: ERROR,WARN
+      LOG_COLOR: "false"
+      LOG_BAILEYS: fatal
+      NODE_OPTIONS: --require=/evolution/agroconecta-redact-console.cjs --require=/evolution/agrolazo-resolve-lid.cjs
+      AGROLAZO_LID_COMPAT: "1"
+      # This tag rejects requests with no Origin unless wildcard is configured.
+      # Access is restricted by Docker networking and the API key, not CORS.
+      CORS_ORIGIN: "*"
+      CORS_CREDENTIALS: "false"
+      RABBITMQ_ENABLED: "false"
+      SQS_ENABLED: "false"
+      WEBSOCKET_ENABLED: "false"
+      PUSHER_ENABLED: "false"
+      CHATWOOT_ENABLED: "false"
+      TYPEBOT_ENABLED: "false"
+      OPENAI_ENABLED: "false"
+      DIFY_ENABLED: "false"
+      N8N_ENABLED: "false"
+    volumes:
+      - evolution_instances:/evolution/instances
+      - ./docker/evolution/redact-console.cjs:/evolution/agroconecta-redact-console.cjs:ro
+      - ./docker/evolution/resolve-lid.cjs:/evolution/agrolazo-resolve-lid.cjs:ro
+    networks:
+      - application
+      - evolution-data
+    depends_on:
+      evolution-postgres:
+        condition: service_healthy
+      evolution-redis:
+        condition: service_healthy
+    healthcheck:
+      # Authenticated readiness without printing response bodies or credentials.
+      test:
+        - CMD
+        - node
+        - -e
+        - "const http=require('node:http'); const req=http.get({host:'127.0.0.1',port:8080,path:'/instance/fetchInstances',headers:{apikey:process.env.AUTHENTICATION_API_KEY},timeout:4000},res=>{res.resume();res.on('end',()=>process.exit(res.statusCode===200?0:1));});req.on('timeout',()=>{req.destroy();process.exit(1);});req.on('error',()=>process.exit(1));"
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
+    init: true
+    restart: unless-stopped
+    stop_grace_period: 30s
+    logging: *evolution-logging
+
+  evolution-postgres:
+    image: postgres:18-bookworm@sha256:1c59e2c3c818eaa0f0628f695b36e7c9e362d6b219b36a54a32df645cbd7e1af
+    profiles: [messaging]
+    environment:
+      POSTGRES_DB: evolution
+      POSTGRES_USER: evolution
+      POSTGRES_PASSWORD: ${EVOLUTION_DB_PASSWORD:?Define EVOLUTION_DB_PASSWORD in the root .env file}
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+    volumes:
+      - evolution_postgres_data:/var/lib/postgresql
+    networks:
+      - evolution-data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - PGPASSWORD="$$POSTGRES_PASSWORD" psql --host=127.0.0.1 --username="$$POSTGRES_USER" --dbname="$$POSTGRES_DB" --no-password --tuples-only --command='SELECT 1' >/dev/null 2>&1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    logging: *evolution-logging
+
+  evolution-redis:
+    image: redis:8-bookworm@sha256:c22af04bb576503bf16b3e34a1fd2fd82de0f765afd866d2e380145e0af30d78
+    profiles: [messaging]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Define REDIS_PASSWORD in the root .env file}
+    command:
+      - sh
+      - -ec
+      - |
+        case "$$REDIS_PASSWORD" in
+          *[!A-Za-z0-9_-]*|'') echo 'REDIS_PASSWORD must contain only letters, digits, underscores or hyphens.' >&2; exit 1 ;;
+        esac
+        umask 077
+        printf '%s\n' \
+          'bind 0.0.0.0' \
+          'protected-mode yes' \
+          "requirepass $$REDIS_PASSWORD" \
+          'dir /data' \
+          'appendonly yes' \
+          'appendfsync everysec' \
+          'save 60 1000' \
+          'maxmemory 128mb' \
+          'maxmemory-policy noeviction' \
+          > /tmp/agroconecta-evolution-redis.conf
+        chown redis:redis /tmp/agroconecta-evolution-redis.conf
+        exec docker-entrypoint.sh redis-server /tmp/agroconecta-evolution-redis.conf
+    volumes:
+      - evolution_redis_data:/data
+    networks:
+      - evolution-data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli --no-auth-warning ping | grep -q PONG
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+    logging: *evolution-logging
+
+volumes:
+  evolution_instances:
+  evolution_postgres_data:
+  evolution_redis_data:
+
+networks:
+  evolution-data:
+    driver: bridge
+    internal: true

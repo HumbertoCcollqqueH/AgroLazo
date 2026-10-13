@@ -1,0 +1,190 @@
+name: agroconecta-production
+
+x-log: &logging
+  driver: local
+  options: {max-size: "10m", max-file: "5"}
+
+x-environment: &app-environment
+  APP_NAME: AgroConecta
+  APP_ENV: production
+  APP_DEBUG: "false"
+  APP_URL: ${PROD_APP_URL:?Define PROD_APP_URL with HTTPS}
+  APP_LOCALE: es
+  APP_FALLBACK_LOCALE: es
+  APP_KEY_FILE: /run/secrets/app_key
+  PRODUCER_LOOKUP_KEY_FILE: /run/secrets/producer_lookup_key
+  APP_MAINTENANCE_DRIVER: cache
+  APP_MAINTENANCE_STORE: redis
+  LOG_CHANNEL: stderr
+  LOG_LEVEL: warning
+  DB_CONNECTION: pgsql
+  DB_HOST: postgres
+  DB_PORT: "5432"
+  DB_DATABASE: agroconecta
+  DB_USERNAME: agroconecta_app
+  DB_PASSWORD_FILE: /run/secrets/db_app_password
+  REDIS_HOST: redis
+  REDIS_PORT: "6379"
+  REDIS_PASSWORD_FILE: /run/secrets/redis_password
+  REDIS_CLIENT: phpredis
+  REDIS_PREFIX: agroconecta_production_
+  CACHE_STORE: redis
+  CACHE_PREFIX: agroconecta_production_cache_
+  SESSION_DRIVER: redis
+  SESSION_SECURE_COOKIE: "true"
+  SESSION_HTTP_ONLY: "true"
+  SESSION_SAME_SITE: lax
+  SESSION_ENCRYPT: "true"
+  QUEUE_CONNECTION: redis
+  REDIS_QUEUE_RETRY_AFTER: "120"
+  FILESYSTEM_DISK: local
+  MAIL_MAILER: array
+  MESSAGING_SIMULATOR_ENABLED: "false"
+  MESSAGING_LIVE_ENABLED: "false"
+  WHATSAPP_ENABLED: "false"
+  SMS_ENABLED: "false"
+  COMMERCE_LIVE_ENABLED: "false"
+  AUTO_VERIFICATION_ENABLED: "false"
+  DEMO_PASSWORD: ""
+
+x-app: &app
+  image: ${PROD_APP_IMAGE:-agroconecta-release:rehearsal}
+  build:
+    context: .
+    dockerfile: docker/production/Dockerfile
+    target: app
+  environment: *app-environment
+  secrets: [app_key, producer_lookup_key, db_app_password, redis_password]
+  read_only: true
+  tmpfs:
+    - /tmp:uid=33,gid=33,mode=1770
+    - /var/www/html/storage/framework:uid=33,gid=33,mode=0750
+  volumes:
+    - private_files:/var/www/html/storage/app/private
+    - app_logs:/var/www/html/storage/logs
+  networks: [web, data]
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  init: true
+  restart: unless-stopped
+  stop_grace_period: 120s
+  logging: *logging
+  depends_on:
+    postgres: {condition: service_healthy}
+    redis: {condition: service_healthy}
+
+services:
+  app:
+    <<: *app
+    healthcheck:
+      test: ["CMD-SHELL", "SCRIPT_NAME=/ping SCRIPT_FILENAME=/ping REQUEST_METHOD=GET cgi-fcgi -bind -connect 127.0.0.1:9000 | grep -q pong"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+  queue:
+    <<: *app
+    command: ["php", "artisan", "queue:work", "redis", "--queue=default", "--sleep=1", "--tries=3", "--backoff=5", "--timeout=60", "--max-time=3600"]
+  scheduler:
+    <<: *app
+    command: ["scheduler"]
+  migrate:
+    <<: *app
+    profiles: [tools]
+    environment:
+      <<: *app-environment
+      DB_USERNAME: agroconecta_migrator
+      DB_PASSWORD_FILE: /run/secrets/db_migration_password
+    secrets: [app_key, producer_lookup_key, db_migration_password, redis_password]
+    command: ["php", "artisan", "migrate", "--force", "--no-interaction"]
+    restart: "no"
+  nginx:
+    image: ${PROD_WEB_IMAGE:-agroconecta-web:rehearsal}
+    build:
+      context: .
+      dockerfile: docker/production/Dockerfile
+      target: web
+    environment:
+      PROD_SERVER_NAME: ${PROD_SERVER_NAME:?Define the HTTPS hostname}
+      PROD_APP_URL: ${PROD_APP_URL:?Define the HTTPS origin}
+    secrets: [tls_certificate, tls_private_key]
+    ports:
+      - "${PROD_BIND_ADDRESS:-127.0.0.1}:${PROD_HTTP_PORT:-8088}:8080"
+      - "${PROD_BIND_ADDRESS:-127.0.0.1}:${PROD_HTTPS_PORT:-8443}:8443"
+    read_only: true
+    tmpfs:
+      - /tmp:uid=101,gid=101,mode=1770
+      - /etc/nginx/conf.d:uid=101,gid=101,mode=0750
+    networks: [web]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    depends_on:
+      app: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:8080/up"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    logging: *logging
+  postgres:
+    image: postgres:18-bookworm@sha256:1c59e2c3c818eaa0f0628f695b36e7c9e362d6b219b36a54a32df645cbd7e1af
+    environment:
+      POSTGRES_DB: agroconecta
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_admin_password
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+    secrets: [db_admin_password, db_app_password, db_migration_password]
+    volumes:
+      - postgres_data:/var/lib/postgresql
+      - ./docker/production/postgres-init.sh:/docker-entrypoint-initdb.d/10-roles.sh:ro
+    networks: [data]
+    healthcheck:
+      test: ["CMD-SHELL", "PGPASSWORD=$$(cat /run/secrets/db_admin_password) psql -h 127.0.0.1 -U postgres -d agroconecta -Atc 'SELECT 1' >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+    logging: *logging
+  redis:
+    image: redis:8-bookworm@sha256:c22af04bb576503bf16b3e34a1fd2fd82de0f765afd866d2e380145e0af30d78
+    user: redis
+    entrypoint: ["/bin/sh", "/opt/redis-entrypoint.sh"]
+    secrets: [redis_password]
+    volumes:
+      - redis_data:/data
+      - ./docker/production/redis-entrypoint.sh:/opt/redis-entrypoint.sh:ro
+    tmpfs: [/tmp]
+    read_only: true
+    networks: [data]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: ["CMD-SHELL", "REDISCLI_AUTH=$$(cat /run/secrets/redis_password) redis-cli --no-auth-warning ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+    logging: *logging
+
+secrets:
+  app_key: {file: "${PROD_SECRETS_DIR:?Define PROD_SECRETS_DIR}/app_key"}
+  producer_lookup_key: {file: "${PROD_SECRETS_DIR}/producer_lookup_key"}
+  db_admin_password: {file: "${PROD_SECRETS_DIR}/db_admin_password"}
+  db_app_password: {file: "${PROD_SECRETS_DIR}/db_app_password"}
+  db_migration_password: {file: "${PROD_SECRETS_DIR}/db_migration_password"}
+  redis_password: {file: "${PROD_SECRETS_DIR}/redis_password"}
+  tls_certificate: {file: "${PROD_TLS_DIR:?Define PROD_TLS_DIR}/server.crt"}
+  tls_private_key: {file: "${PROD_TLS_DIR}/server.key"}
+volumes:
+  postgres_data:
+  redis_data:
+  private_files:
+  app_logs:
+networks:
+  web:
+  data:
+    internal: true
+

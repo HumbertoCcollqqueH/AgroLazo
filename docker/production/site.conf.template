@@ -1,0 +1,46 @@
+server {
+    listen 8080;
+    server_name _;
+    location = /up { return 200 "alive\n"; }
+    location / { return 308 ${PROD_APP_URL}$request_uri; }
+}
+server {
+    listen 8443 ssl;
+    server_name ${PROD_SERVER_NAME};
+    ssl_certificate /run/secrets/tls_certificate;
+    ssl_certificate_key /run/secrets/tls_private_key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_session_tickets off;
+    root /var/www/html/public;
+    index index.php;
+    charset utf-8;
+    client_max_body_size 12m;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header Referrer-Policy "no-referrer" always;
+    add_header Strict-Transport-Security "max-age=31536000" always;
+    resolver 127.0.0.11 valid=10s ipv6=off;
+    set $php_backend app:9000;
+    location / { try_files $uri $uri/ /index.php?$query_string; }
+    location /build/assets/ {
+        try_files $uri =404;
+        expires 1y;
+        access_log off;
+    }
+    location = /index.php {
+        include /etc/nginx/fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root/index.php;
+        fastcgi_param DOCUMENT_ROOT $document_root;
+        fastcgi_param HTTPS on;
+        fastcgi_pass $php_backend;
+        fastcgi_hide_header X-Powered-By;
+        fastcgi_hide_header X-Content-Type-Options;
+        fastcgi_hide_header X-Frame-Options;
+        fastcgi_hide_header Referrer-Policy;
+        fastcgi_hide_header Strict-Transport-Security;
+        fastcgi_read_timeout 60s;
+    }
+    location ~ \.php(?:/|$) { return 404; }
+    location ~ /\.(?!well-known(?:/|$)) { deny all; }
+}
+
