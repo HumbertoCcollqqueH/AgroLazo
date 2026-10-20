@@ -15,4 +15,13 @@ class CommerceRequest extends FormRequest
     {
         return ['key' => ['required', 'uuid']];
     }
+
+    protected function getRedirectUrl(): string
+    {
+        if ($this->routeIs('commerce.quotes.store')) {
+            return route('commerce.quotes.create', $this->route('lot'));
+        }
+
+        return parent::getRedirectUrl();
+    }
 }

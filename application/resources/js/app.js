@@ -1,3 +1,7 @@
+import './coordination-chat.js';
+import './producer-portal.js';
+import './payment-experience.js';
+
 if (document.documentElement.hasAttribute('data-local-performance')) {
     window.addEventListener('load', () => {
         setTimeout(() => {
@@ -26,11 +30,21 @@ const scrollBehavior = () => motionPreference.matches ? 'instant' : 'smooth';
 const operationsToggle = document.querySelector('[data-operations-toggle]');
 if (operationsToggle) {
     const sidebar = document.querySelector('[data-operations-sidebar]');
+    const backdrop = document.querySelector('[data-operations-backdrop]');
+    const closeButton = sidebar.querySelector('[data-operations-close]');
+    const workspace = document.querySelector('.op-workspace');
+    const bottomNavigation = document.querySelector('.op-mobile-nav');
     const mobileOperations = window.matchMedia('(max-width: 940px)');
     operationsToggle.hidden = false;
     function closeOperationsMenu() {
         sidebar.dataset.collapsed = String(mobileOperations.matches);
         operationsToggle.setAttribute('aria-expanded', 'false');
+        backdrop.hidden = true;
+        document.body.classList.remove('op-menu-open');
+        workspace.inert = false;
+        if (bottomNavigation) bottomNavigation.inert = false;
+        sidebar.removeAttribute('role');
+        sidebar.removeAttribute('aria-modal');
     }
     closeOperationsMenu();
     mobileOperations.addEventListener('change', closeOperationsMenu);
@@ -38,11 +52,26 @@ if (operationsToggle) {
         const open = operationsToggle.getAttribute('aria-expanded') !== 'true';
         operationsToggle.setAttribute('aria-expanded', String(open));
         sidebar.dataset.collapsed = String(!open);
+        backdrop.hidden = !open;
+        document.body.classList.toggle('op-menu-open', open);
+        workspace.inert = open;
+        if (bottomNavigation) bottomNavigation.inert = open;
+        if (open) { sidebar.setAttribute('role', 'dialog'); sidebar.setAttribute('aria-modal', 'true'); closeButton.focus(); }
     });
+    const dismiss = () => { closeOperationsMenu(); operationsToggle.focus(); };
+    closeButton.addEventListener('click', dismiss);
+    backdrop.addEventListener('click', dismiss);
+    sidebar.addEventListener('click', event => { if (event.target.closest('a') && mobileOperations.matches) closeOperationsMenu(); });
     document.addEventListener('click', event => {
         if (mobileOperations.matches && !sidebar.contains(event.target) && !operationsToggle.contains(event.target)) closeOperationsMenu();
     });
     document.addEventListener('keydown', event => {
+        if (event.key === 'Tab' && mobileOperations.matches && operationsToggle.getAttribute('aria-expanded') === 'true') {
+            const focusable = [...sidebar.querySelectorAll('a[href], button:not([disabled])')].filter(element => element.getClientRects().length);
+            const first = focusable[0], last = focusable[focusable.length - 1];
+            if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+            else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+        }
         if (event.key === 'Escape' && operationsToggle.getAttribute('aria-expanded') === 'true') {
             closeOperationsMenu();
             operationsToggle.focus();
@@ -101,6 +130,7 @@ if (menuToggle) {
     function closeMenu() {
         navigation.dataset.collapsed = String(mobileNavigation.matches);
         menuToggle.setAttribute('aria-expanded', 'false');
+        menuToggle.querySelector('span').textContent = 'Menú';
     }
     closeMenu();
     mobileNavigation.addEventListener('change', closeMenu);
@@ -108,6 +138,10 @@ if (menuToggle) {
         const open = menuToggle.getAttribute('aria-expanded') !== 'true';
         menuToggle.setAttribute('aria-expanded', String(open));
         navigation.dataset.collapsed = String(!open);
+        menuToggle.querySelector('span').textContent = open ? 'Cerrar' : 'Menú';
+    });
+    document.addEventListener('click', event => {
+        if (mobileNavigation.matches && !navigation.contains(event.target) && !menuToggle.contains(event.target)) closeMenu();
     });
     navigation.addEventListener('click', event => {
         if (event.target.closest('a') && mobileNavigation.matches) closeMenu();

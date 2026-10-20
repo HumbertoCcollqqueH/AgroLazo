@@ -162,6 +162,30 @@ services:
       redis:
         condition: service_healthy
 
+  reverb:
+    <<: *app-base
+    command: ["php", "artisan", "reverb:start", "--host=0.0.0.0", "--port=8080", "--no-interaction"]
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(@fsockopen('127.0.0.1', 8080) ? 0 : 1);"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  realtime-worker:
+    <<: *app-base
+    command: ["php", "artisan", "queue:work", "realtime", "--queue=realtime", "--sleep=1", "--tries=3", "--backoff=2", "--timeout=30", "--max-time=3600"]
+    depends_on:
+      reverb:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
   mailpit:
     image: axllent/mailpit@sha256:98b916bd3c8d61f7633a52d3ea2f58d00620cb01ca57ab59edde68c347a95365
     profiles: [mail]

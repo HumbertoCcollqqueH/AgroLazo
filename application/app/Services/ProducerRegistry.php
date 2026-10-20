@@ -118,6 +118,47 @@ class ProducerRegistry
         });
     }
 
+    public function registerSelf(User $actor, array $data): Producer
+    {
+        return DB::transaction(function () use ($actor, $data): Producer {
+            Role::query()->where('code', 'admin')->lockForUpdate()->firstOrFail();
+            $actor = User::query()->lockForUpdate()->findOrFail($actor->id);
+            abort_unless($actor->active && $actor->hasRole('producer') && ! $actor->producer()->exists(), 403);
+            $this->identity->assertKeyMatchesDatabase();
+            $data = Validator::make($data, self::profileRules(false))->validate();
+            $phone = $this->identity->normalizePhone($data['phone']);
+            $this->requireUniqueIdentity('dni', $data['dni']);
+            $this->requireUniqueIdentity('phone', $phone);
+            $producer = new Producer([...Arr::only($data, self::PROFILE_FIELDS), 'dni' => $data['dni'], 'phone' => $phone,
+                'status' => 'pending_verification', 'registered_by' => $actor->id]);
+            $producer->user_id = $actor->id;
+            $producer->save();
+            $this->saveLocation($actor, $producer, $data);
+            $this->saveProducts($producer, $data);
+            AuditLog::record($actor, 'producer.self_registered', $producer, ['status' => $producer->status], 'self_service');
+
+            return $producer;
+        }, 3);
+    }
+
+    public function updateOwnLocation(User $actor, array $data): Producer
+    {
+        return DB::transaction(function () use ($actor, $data): Producer {
+            Role::query()->where('code', 'admin')->lockForUpdate()->firstOrFail();
+            $actor = User::query()->lockForUpdate()->findOrFail($actor->id);
+            abort_unless($actor->active && $actor->hasRole('producer'), 403);
+            $producer = $actor->producer()->lockForUpdate()->firstOrFail();
+            $allowed = [...self::LOCATION_FIELDS, 'product_ids', 'product_ids.*'];
+            $data = Validator::make($data, Arr::only(self::profileRules(true), $allowed))->validate();
+            $this->requireValid(! in_array($producer->status, ['archived', 'suspended'], true), 'profile', 'Tu ficha requiere atención de coordinación.');
+            $this->saveLocation($actor, $producer, $data);
+            $this->saveProducts($producer, $data);
+            AuditLog::record($actor, 'producer.own_location_updated', $producer, [], 'self_service');
+
+            return $producer->fresh();
+        }, 3);
+    }
+
     public function update(User $actor, Producer $producer, array $data): Producer
     {
         return $this->write($actor, 'manage-producers', function (User $actor) use ($producer, $data): Producer {
@@ -182,6 +223,9 @@ class ProducerRegistry
             $producer->status = $data['result'];
             $producer->save();
             $this->addVerification($actor, $producer, $data['method'], $data['notes']);
+            if ($user = $producer->user) {
+                ProducerPortal::notify($user, 'Tu ficha de productor: '.Producer::STATUSES[$producer->status].'. '.$data['notes'], route('producer.home'), 'verification:'.$producer->id.':'.$producer->verifications()->max('id'));
+            }
             AuditLog::record($actor, 'producer.status_changed', $producer, [
                 'status' => ['before' => $previousStatus, 'after' => $producer->status], 'method' => $data['method'],
             ], 'verification_decision');

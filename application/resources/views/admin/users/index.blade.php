@@ -4,6 +4,7 @@
         ['Administración', 'Configura el sistema, gestiona usuarios, supervisa publicaciones y controla las finanzas.'],
         ['Coordinación', 'Verifica productores y ofertas, atiende mensajes y organiza pedidos, acopio y entregas.'],
         ['Compras', 'Explora productos y consulta sus pedidos. La aprobación de su perfil habilita las compras.'],
+        ['Producción', 'Completa su ficha, ofrece productos, acepta precios y coordina recojos dentro de AgroLazo.'],
     ];
 @endphp
 <x-layout :title="$creating ? 'Crear usuario' : 'Usuarios y compradores'">
@@ -40,7 +41,7 @@
             </form>
             <aside class="space-y-5">
                 <section class="rounded-2xl border border-slate-200 bg-white p-6"><h2 class="flex items-center gap-2 text-base font-semibold text-slate-900"><x-ac-icon name="shield" />¿Qué acceso necesita?</h2><dl class="mt-5 space-y-5">@foreach($roleDescriptions as [$label, $description])<div><dt class="text-sm font-semibold text-slate-900">{{ $label }}</dt><dd class="mt-1 text-sm leading-6 text-slate-600">{{ $description }}</dd></div>@endforeach</dl></section>
-                <section class="rounded-2xl border border-teal-200 bg-teal-50 p-6"><h2 class="text-sm font-semibold text-teal-950">¿Vas a registrar un productor?</h2><p class="mt-2 text-sm leading-6 text-teal-900">Crea su ficha de producción y contacto. Podrá presentar ofertas por WhatsApp.</p><a class="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-teal-950 underline underline-offset-4" href="{{ route('producers.create') }}">Registrar productor <x-ac-icon name="arrow" /></a></section>
+                <section class="rounded-2xl border border-teal-200 bg-teal-50 p-6"><h2 class="text-sm font-semibold text-teal-950">¿Vas a registrar un productor?</h2><p class="mt-2 text-sm leading-6 text-teal-900">Crea su ficha de producción y contacto. Podrá presentar ofertas desde su cuenta de productor.</p><a class="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-teal-950 underline underline-offset-4" href="{{ route('producers.create') }}">Registrar productor <x-ac-icon name="arrow" /></a></section>
                 <p class="px-1 text-xs leading-5 text-slate-500">Comunica el correo y la contraseña inicial al nuevo usuario. Los compradores necesitan la aprobación de su perfil antes de comprar.</p>
             </aside>
         </div>
@@ -88,7 +89,7 @@
                     @if($isOwnAccount)
                         <div class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/70 px-5 py-4 sm:px-6"><p class="text-xs leading-5 text-slate-500">Otro administrador gestiona tu rol y estado de acceso.</p><a class="text-xs font-semibold text-slate-700 underline underline-offset-4" href="{{ route('account.edit') }}">Editar mi perfil y contraseña →</a></div>
                     @else
-                        <details class="group border-t border-slate-100" @if($editingAccess && $errors->any()) open @endif>
+                        <details class="group border-t border-slate-100" @if($editingAccess) open @endif>
                             <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-slate-600 hover:bg-slate-50 sm:px-6"><span class="flex items-center gap-2"><x-ac-icon name="settings" />Gestionar acceso</span><span class="transition group-open:rotate-90"><x-ac-icon name="chevron" /></span></summary>
                             <form action="{{ route('admin.users.update', $user) }}" method="POST" class="grid gap-4 bg-slate-50 px-5 pb-5 pt-3 sm:grid-cols-2 sm:px-6 xl:grid-cols-[1fr_1fr_2fr_auto] xl:items-end">
                                 @csrf @method('PATCH')<input type="hidden" name="access_user_id" value="{{ $user->id }}">

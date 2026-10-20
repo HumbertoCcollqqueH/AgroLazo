@@ -18,5 +18,9 @@
 /artifacts/private/
 /.evolution/
 /.local/
+/artifacts/android/
+*.jks
+*.keystore
 /.DS_Store
 Thumbs.db
+/application/public/downloads/*.apk

@@ -24,6 +24,11 @@ class ForwardEvolutionEvent implements ShouldQueue
         if ($event->status === 'done') {
             return;
         }
+        if (config('platform.internal_communication')) {
+            $event->update(['status' => 'blocked', 'error_code' => 'internal_channel_only', 'lease_until' => null]);
+
+            return;
+        }
         if (! config('messaging.whatsapp.enabled') || ! config('messaging.live_enabled')) {
             $event->update(['status' => 'blocked', 'error_code' => 'live_disabled', 'lease_until' => null]);
 

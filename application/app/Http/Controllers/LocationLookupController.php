@@ -13,7 +13,7 @@ class LocationLookupController extends Controller
 {
     public function __invoke(Request $request, LocationLookup $lookup, RuralPlaces $rural): JsonResponse
     {
-        abort_unless($request->user()->hasPermission('view-buyer-area') || $request->user()->hasPermission('manage-producers') || $request->user()->hasPermission('manage-commerce'), 403);
+        abort_unless($request->user()->hasRole('producer') || $request->user()->hasPermission('view-buyer-area') || $request->user()->hasPermission('manage-producers') || $request->user()->hasPermission('manage-commerce'), 403);
         $data = $request->validate(['latitude' => 'required|numeric|between:-90,90', 'longitude' => 'required|numeric|between:-180,180', 'rural_query' => 'sometimes|nullable|string|max:100']);
         $nearby = $rural->nearby((float) $data['latitude'], (float) $data['longitude'], $data['rural_query'] ?? '');
         $result = $lookup->normalize([]);

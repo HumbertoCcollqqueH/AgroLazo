@@ -36,9 +36,12 @@ class PaymentController extends Controller
 
     public function declare(CommerceRequest $request, Order $order, PaymentService $payments): mixed
     {
-        $payments->declare($request->user(), $order, $request->all());
+        $request->validate(['proof' => 'nullable|file|mimes:jpg,jpeg,png,webp,pdf|max:5120']);
+        $payments->declare($request->user(), $order, $request->all(), $request->file('proof'));
 
-        return to_route('commerce.orders.show', $order)->with('status', 'Pago declarado. El ingreso permanece pendiente de revisión.');
+        return to_route('commerce.orders.show', $order)->with('status', $request->hasFile('proof')
+            ? 'Pago y comprobante recibidos. Administración verificará el abono en una sola revisión; te avisaremos aquí.'
+            : 'Pago registrado. Administración verificará el abono en una sola revisión; te avisaremos aquí.');
     }
 
     public function proof(CommerceRequest $request, Payment $payment, PaymentService $payments): mixed
@@ -47,6 +50,14 @@ class PaymentController extends Controller
         $payments->proof($request->user(), $payment, $request->all(), $request->file('proof'));
 
         return to_route('commerce.orders.show', $payment->order_id)->with('status', 'Comprobante recibido en almacenamiento privado; todavía no confirma el cobro.');
+    }
+
+    public function reopen(CommerceRequest $request, Payment $payment, PaymentService $payments): mixed
+    {
+        $request->validate(['proof' => 'nullable|file|mimes:jpg,jpeg,png,webp,pdf|max:5120']);
+        $payments->reopen($request->user(), $payment, $request->all(), $request->file('proof'));
+
+        return to_route('commerce.orders.show', $payment->order_id)->with('status', 'Solicitaste una nueva revisión del mismo pago. Conservamos la operación y sus comprobantes; no vuelvas a transferir ese monto.');
     }
 
     public function download(Request $request, PaymentProof $proof, Commerce $commerce): mixed

@@ -17,6 +17,12 @@
         ['permission' => 'manage-users', 'title' => 'WhatsApp y automatización', 'description' => 'Gestiona la conexión y los mensajes al productor.', 'icon' => 'whatsapp', 'links' => [['label' => 'Configurar WhatsApp', 'route' => 'whatsapp.connection', 'parameters' => []], ['label' => 'Conversaciones', 'route' => 'messaging.index', 'parameters' => []]]],
     ];
     $moduleRoutePermissions = ['admin.users.index' => 'manage-users', 'admin.users.create' => 'manage-users', 'commerce.pricing' => 'manage-pricing', 'payments.methods' => 'confirm-payments', 'commerce.index' => 'manage-commerce', 'catalog.index' => 'view-catalogs', 'fulfillment.points' => 'manage-commerce', 'whatsapp.connection' => 'manage-users', 'messaging.index' => 'manage-messaging'];
+    if (config('platform.internal_communication')) {
+        $pendingThreads = \App\Models\CoordinationThread::where('status', 'open')->where(fn ($q) => $q->whereNull('team_seen_at')->orWhereColumn('updated_at', '>', 'team_seen_at'))->count();
+        $attentionCards[3] = ['permission' => 'view-operations', 'count' => $pendingThreads, 'title' => 'Conversaciones por atender', 'description' => 'Atiende a productores y compradores dentro de AgroLazo.', 'url' => route('coordination.index'), 'icon' => 'users'];
+        $modules[5] = ['permission' => 'view-operations', 'title' => 'Conversaciones', 'description' => 'Conversaciones privadas con el contexto de cada persona.', 'icon' => 'users', 'links' => [['label' => 'Abrir coordinación', 'route' => 'coordination.index', 'parameters' => []]]];
+        $moduleRoutePermissions['coordination.index'] = 'view-operations';
+    }
 @endphp
 <div class="op-dash op-dash--admin">
     <header class="op-dash-header">
@@ -98,7 +104,9 @@
 
         <aside class="op-dash-control" aria-labelledby="admin-control-title">
             <div class="op-dash-control-heading"><span class="op-dash-control-icon"><x-ac-icon name="settings" /></span><p class="op-dash-eyebrow">CENTRO DE CONTROL</p><h2 id="admin-control-title">Todo bajo tu gestión</h2><p>Accesos directos a los puntos clave de la operación.</p></div>
-            @if($operationsDashboard['whatsapp'])
+            @if(config('platform.internal_communication'))
+                <a class="op-dash-control-row" href="{{ route('coordination.index') }}"><span><x-ac-icon name="users" /><span>Conversaciones<small>Dentro de la web y la app</small></span></span><x-ac-icon name="chevron" /></a>
+            @elseif($operationsDashboard['whatsapp'])
                 <a class="op-dash-control-row" href="{{ route('whatsapp.connection') }}"><span><x-ac-icon name="whatsapp" /><span>WhatsApp<small>{{ $operationsDashboard['whatsapp']['automation_enabled'] ? 'Automatización habilitada' : 'Automatización pausada' }}</small></span></span><x-ac-icon name="chevron" /></a>
             @endif
             @if($displayPermissions->contains('manage-pricing'))<a class="op-dash-control-row" href="{{ route('commerce.pricing') }}"><span><x-ac-icon name="chart" /><span>Precios de mercado<small>Referencias y reglas</small></span></span><x-ac-icon name="chevron" /></a>@endif
@@ -138,3 +146,4 @@
         </section>
     @endif
 </div>
+

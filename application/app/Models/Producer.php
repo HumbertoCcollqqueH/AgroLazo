@@ -63,6 +63,11 @@ class Producer extends Model
         return $this->belongsTo(User::class, 'registered_by');
     }
 
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
     public function verifications(): HasMany
     {
         return $this->hasMany(ProducerVerification::class);

@@ -8,6 +8,7 @@ use App\Models\AuditLog;
 use App\Models\Buyer;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\ProducerPortal;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -37,6 +38,7 @@ class BuyerApprovalController extends Controller
 
             $target->forceFill(['status' => 'approved', 'approved_by' => $actor->id, 'approved_at' => now()])->save();
             AuditLog::record($actor, 'buyer.approved', $target, ['before' => 'pending', 'after' => 'approved'], $request->validated('reason'));
+            ProducerPortal::notify($target->user, 'Tu cuenta de comprador fue aprobada. Ya puedes cotizar y confirmar compras desde AgroLazo.', route('marketplace.index'), 'buyer-approved:'.$target->id);
         });
 
         return back()->with('status', 'Comprador autorizado. La aprobación quedó registrada.');

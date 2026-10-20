@@ -2,7 +2,7 @@
     <a class="text-sm underline" href="{{ route('commerce.index') }}">← Operaciones</a><h1 class="mb-8 mt-5 text-3xl font-semibold">Precios transparentes</h1>
     <p class="mb-6 text-sm leading-7">Cada regla nueva conserva un historial independiente. Los descuentos se financian con el cargo de plataforma; no reducen el precio aceptado por el productor. Registrar una referencia no la convierte en precio oficial.</p>
     <x-commerce-panel title="Precio automático al productor" class="mb-6">
-        <p class="text-sm leading-7">{{ $automaticPrices['enabled'] ? 'Activado' : 'Desactivado' }}. Después de verificar la oferta, el asistente propone un precio por kg y calcula el total con el peso registrado. El productor acepta por WhatsApp antes de que el producto se publique para compradores.</p>
+        <p class="text-sm leading-7">{{ $automaticPrices['enabled'] ? 'Activado' : 'Desactivado' }}. Después de verificar la oferta, el asistente propone un precio por kg y calcula el total con el peso registrado. El productor acepta desde su cuenta antes de que el producto se publique para compradores.</p>
         <p class="mt-2 text-sm">Se utiliza una referencia mayorista de la misma variedad, sin descuentos por volumen ni deducciones automáticas. No representa un precio observado en la chacra del productor. La propuesta informa el mercado, la fecha y la fuente; transporte cubierto por la plataforma, sin flete al productor ni al comprador.</p>
         <p class="mt-2 text-sm">Consulta cada hora · Antigüedad máxima: {{ config('market-pricing.max_age_days') }} días · Última consulta: {{ $automaticPrices['checked_at'] ? \Carbon\CarbonImmutable::parse($automaticPrices['checked_at'])->setTimezone('America/Lima')->format('d/m/Y H:i') : 'Pendiente' }}.</p>
         @if($automaticPrices['error'])<p class="mt-3 text-sm text-amber-800">{{ $automaticPrices['error']['message'] }}</p>@endif
@@ -49,4 +49,3 @@
     </div>
     <x-commerce-panel title="Historial de referencias" class="mt-6">@forelse($references as $reference)<div class="border-b border-[#dfe4da] py-4 text-sm"><p class="font-semibold">{{ $reference->product->name }} · S/ {{ $reference->unit_price }} / {{ $reference->unit->code }} · {{ $reference->synthetic ? 'Sintético' : 'Manual' }}</p><p class="mt-2">{{ $reference->market }} · {{ $reference->observed_on->format('d/m/Y') }}</p><p class="mt-2 break-words">{{ $reference->source }}</p></div>@empty<p class="text-sm">Todavía no se han registrado referencias.</p>@endforelse<div class="mt-5">{{ $references->links() }}</div></x-commerce-panel>
 </x-layout>
-

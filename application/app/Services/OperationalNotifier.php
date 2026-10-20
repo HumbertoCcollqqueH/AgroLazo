@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Events\InboxUpdated;
 use App\Models\AuditLog;
 use App\Models\CollectionEvent;
 use App\Models\CollectionReceipt;
@@ -13,6 +14,7 @@ use App\Models\Order;
 use App\Models\OrderAdjustment;
 use App\Models\OrderAllocation;
 use App\Models\OutboxEvent;
+use App\Models\Payment;
 use App\Models\ProducerPayout;
 use App\Models\ProducerSettlement;
 use App\Models\Shipment;
@@ -232,15 +234,30 @@ class OperationalNotifier
         if (! $event->order) {
             return;
         }
-        $body = $this->prefix($event->order).'Orden '.$event->order->code.': '.config('commerce.event_labels.'.$event->action, 'Actualización registrada').'. ';
+        $label = match ($event->action) {
+            'payment_proof_uploaded' => 'Comprobante recibido',
+            'payment_resubmitted' => 'Aclaración de pago recibida',
+            default => config('commerce.event_labels.'.$event->action, 'Actualización registrada'),
+        };
+        $body = $this->prefix($event->order).'Orden '.$event->order->code.': '.$label.'. ';
         $body .= match ($event->action) {
             'delivery_address_updated' => 'Se actualizaron la dirección, el contacto receptor y el punto de entrega en el mapa. Revisa el destino guardado en la orden.',
             'order_confirmed' => 'Tu compra está registrada por S/ '.Money::format($event->order->total_minor).'. '.($event->order->requested_delivery_on ? 'Solicitaste recibirla el '.$event->order->requested_delivery_on->format('d/m/Y').'. ' : '').'Nuestro equipo coordina el transporte. '.($event->order->synthetic && config('commerce.show_test_labels') ? 'Siguiente paso: simula el registro de pago; no transfieras dinero real. ' : 'Siguiente paso: registra el pago o coordina el método elegido. ').'Coordinación confirmará el horario de entrega. La confirmación de compra no acredita un cobro.',
             'collection_scheduled' => $this->collectionDetails(CollectionEvent::query()->where('order_id', $event->order_id)->findOrFail($event->details['collection_event_id'])).' Los productores recibirán sus instrucciones individuales. Consulta la entrega acordada en tu orden.',
-            'payment_declared', 'payment_under_review' => 'Tu registro de pago está pendiente de verificación. Un comprobante adjunto todavía no confirma el ingreso.',
-            'payment_confirmed' => 'Saldo de compra pendiente: S/ '.Money::format(max(0, app(PaymentService::class)->balance($event->order)['buyer_balance_minor'])).'. El despacho requiere el pago cubierto o la autorización vigente correspondiente.',
-            'payment_rejected' => 'Revisa el registro de pago con coordinación y presenta los datos o comprobante correctos.',
+            'payment_declared' => 'Recibimos tu registro de pago'.(($event->details['proof_attached'] ?? false) ? ' y su comprobante' : '').'. Administración verificará el ingreso en la cuenta receptora y te avisaremos aquí del resultado. No repitas esta transferencia mientras se revisa.',
+            'payment_proof_uploaded' => 'Adjuntamos el comprobante a tu registro de pago. El ingreso sigue pendiente de verificación; la imagen por sí sola no acredita dinero. Te avisaremos aquí del resultado. No repitas esta transferencia mientras se revisa.',
+            'payment_resubmitted' => 'Recibimos la aclaración de tu pago y la vinculamos al mismo registro. Administración revisará el ingreso y te avisaremos aquí del resultado. El saldo sigue pendiente; no repitas esta transferencia mientras se revisa.',
+            'payment_under_review' => 'Administración está revisando el ingreso en la cuenta receptora. Tu registro de pago todavía no se ha acreditado al saldo. Te avisaremos aquí cuando se resuelva.',
+            'payment_confirmed' => $this->confirmedPaymentDetails($event, true),
+            'payment_rejected' => 'Este registro no se acreditó al saldo de la compra. Abre el detalle del pago y consulta con coordinación desde tu cuenta para aclarar o corregir sus datos antes de repetir una transferencia.',
             'shipment_dispatched' => 'Tu producto está en tránsito. Revisa la coordinación de entrega en el detalle de la orden.',
+            'shipment_scheduled' => 'El equipo programó el despacho. Consulta la fecha y el destino de tu entrega dentro de la orden.',
+            'adjustment_proposed' => 'Hay un ajuste de cantidades o condiciones que necesita tu revisión. Abre la orden para aceptarlo o coordinar una corrección; todavía no se considera aceptado.',
+            'adjustment_accepted' => 'Tu aceptación del ajuste quedó registrada. Consulta las cantidades y los importes vigentes en la orden.',
+            'shipment_returned', 'shipment_lost' => 'Se registró una incidencia con la mercancía. Coordinación revisará la cantidad afectada y las acciones correspondientes; consulta el seguimiento de tu orden.',
+            'refund_authorized' => 'Se autorizó un reembolso, pero la devolución de dinero todavía no está confirmada. Te avisaremos cuando se registre.',
+            'refund_confirmed' => 'Se confirmó el reembolso. Revisa su importe y referencia dentro de la orden.',
+            'refund_failed', 'refund_uncertain' => 'El reembolso sigue pendiente de confirmación. Administración está revisando el resultado; este aviso no acredita una devolución recibida.',
             'shipment_delivered' => 'Se registró una entrega. Revisa la cantidad entregada y comunica cualquier diferencia a coordinación.',
             'order_closed' => 'La compra, entrega y saldos quedaron conciliados. Conserva este número para futuras consultas.',
             default => 'Consulta el detalle actualizado en tu espacio.',
@@ -248,10 +265,46 @@ class OperationalNotifier
         $this->enqueue(['event_key' => 'commerce:'.$event->id.':buyer', 'order_id' => $event->order_id, 'user_id' => $event->order->buyer->user_id, 'body' => $body]);
     }
 
+    private function confirmedPaymentDetails(CommerceEvent $event, bool $forBuyer): string
+    {
+        $payment = Payment::query()->where('order_id', $event->order_id)->find($event->details['payment_id'] ?? null);
+        $balance = app(PaymentService::class)->balance($event->order)['buyer_balance_minor'];
+        $body = $payment ? 'Ingreso verificado: S/ '.Money::format($payment->amount_minor).'. ' : 'Ingreso verificado. ';
+        $body .= $balance > 0
+            ? 'Pago parcial confirmado. Saldo pendiente: S/ '.Money::format($balance).'. '
+            : 'Pago completo confirmado. Saldo pendiente: S/ 0.00. ';
+        if ($balance < 0) {
+            $body .= 'Saldo a favor del comprador: S/ '.Money::format(-$balance).'; administración coordinará su conciliación. ';
+        }
+
+        return $body.($forBuyer
+            ? 'Consulta el seguimiento y la coordinación de entrega dentro de tu orden.'
+            : 'El saldo se actualizó automáticamente. Revisa la mercancía recibida y la planificación antes de registrar un despacho.');
+    }
+
     public function coordinators(CommerceEvent $event): void
     {
-        if (! $event->order || $event->action !== 'delivery_address_updated') {
+        $instructions = [
+            'delivery_address_updated' => 'El destino de entrega cambió. Revisa la dirección, contacto y punto del mapa antes de organizar el transporte. La fecha solicitada y el recojo no cambian con esta actualización.',
+            'payment_declared' => 'El comprador registró un pago. Administración puede revisar su referencia, importe y comprobante en Cobros por revisar, contrastar el abono real y confirmarlo en una sola revisión.',
+            'payment_proof_uploaded' => 'El comprador adjuntó un comprobante a su pago pendiente. Administración debe contrastarlo con el ingreso real en la cuenta receptora; la imagen por sí sola no acredita dinero.',
+            'payment_resubmitted' => 'El comprador aclaró un pago rechazado. El mismo registro vuelve a revisión y conserva sus datos de operación. Administración debe contrastar el ingreso real antes de confirmarlo; no se ha acreditado al saldo ni se debe pedir otra transferencia sin aclararlo.',
+            'payment_under_review' => 'Hay un pago pendiente de resolver. Administración puede confirmar el ingreso verificado o rechazar el registro con su motivo.',
+            'payment_confirmed' => '',
+            'payment_rejected' => 'Un registro de pago fue rechazado y no se acreditó al saldo. Aclara los datos con el comprador antes de pedirle otra transferencia.',
+            'adjustment_accepted' => 'El comprador aceptó un ajuste. Revisa cantidades, planificación de recojos y saldos actualizados.',
+            'shipment_returned' => 'Se registró una devolución. Revisa la mercancía y concilia la incidencia.',
+            'shipment_lost' => 'Se registró una pérdida. Revisa las cantidades afectadas y resuelve la incidencia.',
+            'payout_failed' => 'Un desembolso falló. Administración debe verificar el resultado antes de volver a pagar.',
+            'payout_uncertain' => 'Un desembolso tiene resultado incierto. Verifica la operación antes de repetirla.',
+            'refund_failed' => 'Un reembolso falló. Revisa el resultado antes de reintentarlo.',
+            'refund_uncertain' => 'Un reembolso tiene resultado incierto. Verifica el movimiento antes de repetirlo.',
+        ];
+        if (! $event->order || ! isset($instructions[$event->action])) {
             return;
+        }
+        if ($event->action === 'payment_confirmed') {
+            $instructions[$event->action] = $this->confirmedPaymentDetails($event, false);
         }
 
         foreach (User::query()->where('active', true)->whereHas('roles.permissions', fn ($q) => $q->where('code', 'manage-commerce'))->get() as $operator) {
@@ -259,13 +312,18 @@ class OperationalNotifier
                 'event_key' => 'commerce:'.$event->id.':operator:'.$operator->id,
                 'order_id' => $event->order_id,
                 'user_id' => $operator->id,
-                'body' => $this->prefix($event->order).'Orden '.$event->order->code.': el destino de entrega fue actualizado. Antes de organizar el transporte, revisa la dirección, el contacto receptor y el punto del mapa en la orden. La fecha solicitada de entrega y el recojo al productor no cambian con esta actualización.',
+                'body' => $this->prefix($event->order).'Orden '.$event->order->code.': '.$instructions[$event->action],
             ]);
         }
     }
 
     private function enqueue(array $data): OperationalNotice
     {
+        if (config('platform.internal_communication')) {
+            $data['body'] = preg_replace('/(?:Escribe|escribe|Responde|responde) AYUDA[^.]*\./u', 'Consulta con coordinación desde tu cuenta.', $data['body']);
+            $data['body'] = preg_replace('/Escribe VENDER[^.]*\./u', 'Crea otra oferta desde Mi producción.', $data['body']);
+            $data['body'] = str_replace('por WhatsApp', 'en AgroLazo', $data['body']);
+        }
         $notice = OperationalNotice::query()->firstOrCreate(['event_key' => $data['event_key']], [...$data, 'notification_uuid' => (string) Str::uuid()]);
         OutboxEvent::enqueue('notice:'.$notice->id, 'commerce_notice', ['notice_id' => $notice->id]);
 
@@ -314,8 +372,21 @@ class OperationalNotifier
                     $notification = new CommerceNotification($notice->body, $notice->order->code, route('commerce.orders.show', $notice->order));
                     $notification->id = $notice->notification_uuid;
                     $notice->user->notifyNow($notification);
+                    InboxUpdated::dispatch($notice->user_id, $notice->notification_uuid);
                 }
                 $notice->update(['status' => 'notified']);
+
+                return;
+            }
+            if (config('platform.internal_communication')) {
+                $user = $notice->producer?->user;
+                if (! $user || ! $user->active || ! $user->hasRole('producer')) {
+                    $notice->update(['status' => 'blocked', 'error_code' => 'producer_account_required']);
+
+                    return;
+                }
+                ProducerPortal::notify($user, $notice->body, route('producer.sales'), 'operational:'.$notice->id);
+                $notice->update(['status' => 'notified', 'error_code' => null]);
 
                 return;
             }

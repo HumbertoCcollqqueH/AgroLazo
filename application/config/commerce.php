@@ -19,7 +19,7 @@ return [
         'order_confirmed' => 'Compra confirmada', 'adjustment_proposed' => 'Ajuste propuesto al comprador', 'adjustment_accepted' => 'Ajuste aceptado por el comprador',
         'collection_scheduled' => 'Acopio programado', 'receipt_recorded' => 'Recepción y pesaje registrados', 'physical_lot_created' => 'Mercancía consolidada en lote físico',
         'shipment_scheduled' => 'Despacho programado', 'shipment_dispatched' => 'Mercancía despachada', 'shipment_delivered' => 'Entrega registrada', 'shipment_returned' => 'Devolución de mercancía registrada', 'shipment_lost' => 'Pérdida registrada', 'incident_resolved' => 'Incidencia conciliada',
-        'payment_declared' => 'Cobro declarado para revisión', 'payment_under_review' => 'Cobro en revisión', 'payment_confirmed' => 'Ingreso confirmado', 'payment_rejected' => 'Registro de cobro rechazado',
+        'payment_declared' => 'Cobro declarado para revisión', 'payment_proof_uploaded' => 'Comprobante recibido', 'payment_resubmitted' => 'Aclaración de pago recibida', 'payment_under_review' => 'Cobro en revisión', 'payment_confirmed' => 'Ingreso confirmado', 'payment_rejected' => 'Registro de cobro rechazado',
         'refund_authorized' => 'Reembolso autorizado', 'refund_confirmed' => 'Reembolso confirmado', 'refund_uncertain' => 'Reembolso de resultado incierto', 'refund_failed' => 'Reembolso fallido',
         'settlement_calculated' => 'Liquidación de productor calculada', 'settlement_approved' => 'Liquidación de productor aprobada', 'payout_confirmed' => 'Desembolso al productor confirmado', 'payout_uncertain' => 'Desembolso de resultado incierto', 'payout_failed' => 'Desembolso fallido', 'order_closed' => 'Orden cerrada y conciliada',
     ],

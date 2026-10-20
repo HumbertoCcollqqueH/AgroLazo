@@ -20,7 +20,7 @@ class StoreUserRequest extends ForgotPasswordRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'email' => [...parent::rules()['email'], Rule::unique('users')],
-            'role' => ['required', 'string', Rule::in(['admin', 'coordinator', 'buyer'])],
+            'role' => ['required', 'string', Rule::in(['admin', 'coordinator', 'buyer', 'producer'])],
             'password' => ['required', 'string', 'confirmed', Password::min(12)->mixedCase()->numbers(), function (string $attribute, mixed $value, Closure $fail): void {
                 if (is_string($value) && strlen($value) > 72) {
                     $fail('La contraseña no puede superar 72 bytes.');

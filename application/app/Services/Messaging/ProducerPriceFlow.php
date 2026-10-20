@@ -14,6 +14,7 @@ use App\Services\AutomatedMarketPriceProvider;
 use App\Services\Money;
 use App\Services\OfferPublication;
 use App\Services\OfferRegistry;
+use App\Services\ProducerPortal;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
@@ -26,6 +27,13 @@ class ProducerPriceFlow
 
     public function queue(Offer $offer): ?Message
     {
+        if (config('platform.internal_communication')) {
+            if ($this->eligibleOffer($offer) && ($actor = $this->verifier($offer))) {
+                app(ProducerPortal::class)->propose($offer, $actor);
+            }
+
+            return null;
+        }
         if (! config('market-pricing.enabled', true)) {
             return null;
         }

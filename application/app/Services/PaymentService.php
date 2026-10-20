@@ -28,40 +28,65 @@ class PaymentService
         return hash_hmac('sha256', $scope.':'.mb_strtoupper(preg_replace('/\s+/u', '', trim($reference))), config('app.key'));
     }
 
-    public function declare(User $actor, Order $order, array $data): Payment
+    public function declare(User $actor, Order $order, array $data, ?UploadedFile $file = null): Payment
     {
-        return $this->commerce->transaction($actor, null, function (User $actor) use ($order, $data): Payment {
-            $this->commerce->authorizeOrder($actor, $order);
-            $data = Validator::make($data, ['key' => 'required|uuid', 'method_id' => 'required|integer|exists:payment_methods,id', 'amount' => 'required|string', 'operation_reference' => 'required|string|min:3|max:100', 'occurred_at' => 'required|date_format:Y-m-d\TH:i'])->validate();
-            $data['amount_minor'] = Money::amount($data['amount']);
-            unset($data['amount']);
-            $data['order_id'] = $order->id;
+        if ($file !== null) {
+            $this->validateProofFile($file);
+        }
+        $path = null;
+        $completed = false;
+        try {
+            $payment = $this->commerce->transaction($actor, null, function (User $actor) use ($order, $data, $file, &$path): Payment {
+                $this->commerce->authorizeOrder($actor, $order);
+                $data = Validator::make($data, ['key' => 'required|uuid', 'method_id' => 'required|integer|exists:payment_methods,id', 'amount' => 'required|string', 'operation_reference' => 'required|string|min:3|max:100', 'occurred_at' => 'required|date_format:Y-m-d\TH:i'])->validate();
+                $data['amount_minor'] = Money::amount($data['amount']);
+                unset($data['amount']);
+                $data['order_id'] = $order->id;
+                if ($file !== null) {
+                    $data['proof_sha256'] = hash_file('sha256', $file->getRealPath());
+                }
 
-            return $this->commerce->once($actor, 'declare-payment', $data, function () use ($actor, $order, $data): Payment {
-                $order = $this->checkout->lockOrder($order);
-                Commerce::ensure($order->status !== 'closed', 'order', 'La orden está cerrada. Registra y concilia cualquier incidencia antes de nuevos cobros.');
-                $method = PaymentMethod::query()->findOrFail($data['method_id']);
-                Commerce::ensure($method->active && ($order->synthetic || $method->live_ready), 'method_id', 'Falta configurar y revisar el receptor de este medio.');
-                Commerce::ensure($order->synthetic ? app()->environment(['local', 'testing']) : (bool) config('commerce.live_enabled'), 'order', 'Los cobros reales no están habilitados.');
-                $occurred = CarbonImmutable::createFromFormat('Y-m-d\TH:i', $data['occurred_at'], 'America/Lima')->startOfMinute();
-                Commerce::ensure($occurred->lessThanOrEqualTo(Commerce::clock()) && $occurred->greaterThanOrEqualTo($order->confirmed_at->startOfMinute()), 'occurred_at', 'El pago debe ser posterior a la compra y no futuro.');
-                $lookup = self::fingerprint('incoming:'.$method->code.':'.$occurred->toDateString(), $data['operation_reference']);
-                Commerce::ensure(! Payment::query()->where('reference_lookup', $lookup)->exists(), 'operation_reference', 'Esa referencia ya está registrada para el medio y la fecha. Revisa el cobro existente.');
-                $payment = Payment::query()->create(['order_id' => $order->id, 'payment_method_id' => $method->id, 'recorded_by' => $actor->id, 'amount_minor' => $data['amount_minor'], 'currency' => 'PEN', 'operation_reference' => $data['operation_reference'], 'reference_lookup' => $lookup, 'occurred_at' => $occurred->utc(), 'recipient_snapshot' => app(ManualPaymentGateway::class)->instructions($method, $order->synthetic), 'status' => 'pending', 'version' => 1]);
-                $this->review($actor, $order, $payment, 'declared', 'Registro pendiente de verificar; no acredita fondos.', ['amount_minor' => $payment->amount_minor]);
-                $this->commerce->event($actor, 'payment_declared', $order, $order->quote->lot, ['payment_id' => $payment->id]);
+                return $this->commerce->once($actor, 'declare-payment', $data, function () use ($actor, $order, $data, $file, &$path): Payment {
+                    $order = $this->checkout->lockOrder($order);
+                    Commerce::ensure($order->status !== 'closed', 'order', 'La orden está cerrada. Registra y concilia cualquier incidencia antes de nuevos cobros.');
+                    $method = PaymentMethod::query()->findOrFail($data['method_id']);
+                    Commerce::ensure($method->active && ($order->synthetic || $method->live_ready), 'method_id', 'Falta configurar y revisar el receptor de este medio.');
+                    Commerce::ensure($order->synthetic ? app()->environment(['local', 'testing']) : (bool) config('commerce.live_enabled'), 'order', 'Los cobros reales no están habilitados.');
+                    $occurred = CarbonImmutable::createFromFormat('Y-m-d\TH:i', $data['occurred_at'], 'America/Lima')->startOfMinute();
+                    Commerce::ensure($occurred->lessThanOrEqualTo(Commerce::clock()) && $occurred->greaterThanOrEqualTo($order->confirmed_at->startOfMinute()), 'occurred_at', 'El pago debe ser posterior a la compra y no futuro.');
+                    $lookup = self::fingerprint('incoming:'.$method->code.':'.$occurred->toDateString(), $data['operation_reference']);
+                    Commerce::ensure(! Payment::query()->where('reference_lookup', $lookup)->exists(), 'operation_reference', 'Esa referencia ya está registrada para el medio y la fecha. Revisa el cobro existente.');
+                    $payment = Payment::query()->create(['order_id' => $order->id, 'payment_method_id' => $method->id, 'recorded_by' => $actor->id, 'amount_minor' => $data['amount_minor'], 'currency' => 'PEN', 'operation_reference' => $data['operation_reference'], 'reference_lookup' => $lookup, 'occurred_at' => $occurred->utc(), 'recipient_snapshot' => app(ManualPaymentGateway::class)->instructions($method, $order->synthetic), 'status' => 'pending', 'version' => 1]);
+                    $this->review($actor, $order, $payment, 'declared', 'Registro pendiente de verificar; no acredita fondos.', ['amount_minor' => $payment->amount_minor]);
+                    if ($file !== null) {
+                        $this->attachProof($actor, $order, $payment, $file, $data['proof_sha256'], $path);
+                    }
+                    $this->commerce->event($actor, 'payment_declared', $order, $order->quote->lot, ['payment_id' => $payment->id, 'proof_attached' => $file !== null]);
 
-                return $payment;
+                    return $payment;
+                });
             });
-        });
+            $completed = true;
+            if ($path !== null && ! $payment->proofs()->get()->contains(fn (PaymentProof $proof): bool => $proof->path === $path)) {
+                Storage::disk('local')->delete($path);
+            }
+
+            return $payment;
+        } catch (Throwable $exception) {
+            if ($path !== null && ! $completed) {
+                Storage::disk('local')->delete($path);
+            }
+            throw $exception;
+        }
     }
 
     public function proof(User $actor, Payment $payment, array $data, UploadedFile $file): PaymentProof
     {
-        Validator::make(['proof' => $file], ['proof' => 'required|file|mimes:jpg,jpeg,png,webp,pdf|max:5120'])->validate();
+        $this->validateProofFile($file);
         $path = null;
+        $completed = false;
         try {
-            return $this->commerce->transaction($actor, null, function (User $actor) use ($payment, $data, $file, &$path): PaymentProof {
+            $proof = $this->commerce->transaction($actor, null, function (User $actor) use ($payment, $data, $file, &$path): PaymentProof {
                 $this->commerce->authorizeOrder($actor, $payment->order);
                 $order = $this->checkout->lockOrder($payment->order);
                 $data = Validator::make($data, ['key' => 'required|uuid'])->validate();
@@ -70,46 +95,132 @@ class PaymentService
 
                 return $this->commerce->once($actor, 'payment-proof', $data, function () use ($actor, $order, $payment, $file, $data, &$path): PaymentProof {
                     $payment = Payment::query()->lockForUpdate()->findOrFail($payment->id);
-                    $existing = PaymentProof::query()->where('sha256', $data['sha256'])->first();
-                    if ($existing) {
-                        Commerce::ensure($existing->payment_id === $payment->id, 'proof', 'El archivo ya se utilizó en otro cobro. Debe revisarse la duplicidad antes de acreditar dinero.');
-
-                        return $existing;
+                    $proof = $this->attachProof($actor, $order, $payment, $file, $data['sha256'], $path);
+                    if ($proof->wasRecentlyCreated) {
+                        $this->commerce->event($actor, 'payment_proof_uploaded', $order, $order->quote->lot, ['payment_id' => $payment->id, 'proof_id' => $proof->id]);
                     }
-                    Commerce::ensure(in_array($payment->status, ['pending', 'proof_uploaded'], true), 'payment', 'El cobro ya está en revisión o resuelto; conserva su evidencia.');
-                    Commerce::ensure($payment->proofs()->count() < 5, 'proof', 'Se admiten hasta cinco comprobantes por registro.');
-                    $path = 'payment-proofs/'.Str::uuid().'.'.$file->extension();
-                    Commerce::ensure(Storage::disk('local')->put($path, file_get_contents($file->getRealPath())), 'proof', 'No se pudo guardar el comprobante privado.');
-                    $proof = PaymentProof::query()->create(['payment_id' => $payment->id, 'recorded_by' => $actor->id, 'path' => $path, 'mime' => $file->getMimeType(), 'size' => $file->getSize(), 'sha256' => $data['sha256']]);
-                    $payment->update(['status' => 'proof_uploaded', 'version' => $payment->version + 1]);
-                    $this->review($actor, $order, $payment, 'proof_uploaded', 'Comprobante recibido; el ingreso sigue sin confirmar.', ['proof_id' => $proof->id]);
 
                     return $proof;
                 });
             });
+            $completed = true;
+            if ($path !== null && $proof->path !== $path) {
+                Storage::disk('local')->delete($path);
+            }
+
+            return $proof;
         } catch (Throwable $exception) {
-            if ($path !== null) {
+            if ($path !== null && ! $completed) {
                 Storage::disk('local')->delete($path);
             }
             throw $exception;
         }
     }
 
+    public function reopen(User $actor, Payment $payment, array $data, ?UploadedFile $file = null): Payment
+    {
+        if ($file !== null) {
+            $this->validateProofFile($file);
+        }
+        $path = null;
+        $completed = false;
+        try {
+            $payment = $this->commerce->transaction($actor, null, function (User $actor) use ($payment, $data, $file, &$path): Payment {
+                $this->commerce->authorizeOrder($actor, $payment->order);
+                $data = Validator::make($data, [
+                    'key' => 'required|uuid',
+                    'version' => 'required|integer|min:1',
+                    'notes' => 'required|string|min:10|max:2000',
+                    'amount' => 'prohibited',
+                    'amount_minor' => 'prohibited',
+                    'method_id' => 'prohibited',
+                    'payment_method_id' => 'prohibited',
+                    'operation_reference' => 'prohibited',
+                    'occurred_at' => 'prohibited',
+                    'currency' => 'prohibited',
+                    'order_id' => 'prohibited',
+                ])->validate();
+                $data['payment_id'] = $payment->id;
+                if ($file !== null) {
+                    $data['proof_sha256'] = hash_file('sha256', $file->getRealPath());
+                }
+
+                return $this->commerce->once($actor, 'resubmit-payment', $data, function () use ($actor, $payment, $data, $file, &$path): Payment {
+                    $order = $this->checkout->lockOrder($payment->order);
+                    $payment = Payment::query()->lockForUpdate()->findOrFail($payment->id);
+                    Commerce::ensure($order->status !== 'closed', 'order', 'La orden ya está cerrada. Consulta con el equipo para conciliar la incidencia.');
+                    Commerce::ensure($payment->version === (int) $data['version'], 'version', 'El pago cambió. Revisa su estado antes de solicitar otra revisión.');
+                    Commerce::ensure($payment->status === 'rejected', 'payment', 'Solo puedes solicitar una nueva revisión de un registro rechazado.');
+                    $payment->update([
+                        'status' => $payment->proofs()->exists() ? 'proof_uploaded' : 'pending',
+                        'version' => $payment->version + 1,
+                        'reviewed_by' => null,
+                        'confirmed_at' => null,
+                    ]);
+                    $this->review($actor, $order, $payment, 'resubmitted', $data['notes'], ['before' => 'rejected', 'previous_version' => (int) $data['version']]);
+                    if ($file !== null) {
+                        $this->attachProof($actor, $order, $payment, $file, $data['proof_sha256'], $path);
+                    }
+                    $this->commerce->event($actor, 'payment_resubmitted', $order, $order->quote->lot, ['payment_id' => $payment->id, 'proof_attached' => $file !== null]);
+
+                    return $payment;
+                });
+            });
+            $completed = true;
+            if ($path !== null && ! $payment->proofs()->get()->contains(fn (PaymentProof $proof): bool => $proof->path === $path)) {
+                Storage::disk('local')->delete($path);
+            }
+
+            return $payment;
+        } catch (Throwable $exception) {
+            if ($path !== null && ! $completed) {
+                Storage::disk('local')->delete($path);
+            }
+            throw $exception;
+        }
+    }
+
+    private function validateProofFile(UploadedFile $file): void
+    {
+        Validator::make(['proof' => $file], ['proof' => 'required|file|mimes:jpg,jpeg,png,webp,pdf|max:5120'])->validate();
+    }
+
+    private function attachProof(User $actor, Order $order, Payment $payment, UploadedFile $file, string $sha256, ?string &$path): PaymentProof
+    {
+        $existing = PaymentProof::query()->where('sha256', $sha256)->first();
+        if ($existing) {
+            Commerce::ensure($existing->payment_id === $payment->id, 'proof', 'El archivo ya se utilizó en otro cobro. Debe revisarse la duplicidad antes de acreditar dinero.');
+
+            return $existing;
+        }
+        Commerce::ensure(in_array($payment->status, ['pending', 'proof_uploaded'], true), 'payment', 'El cobro ya está en revisión o resuelto; conserva su evidencia.');
+        Commerce::ensure($payment->proofs()->count() < 5, 'proof', 'Se admiten hasta cinco comprobantes por registro.');
+        $path ??= 'payment-proofs/'.Str::uuid().'.'.$file->extension();
+        Commerce::ensure(Storage::disk('local')->put($path, file_get_contents($file->getRealPath())), 'proof', 'No se pudo guardar el comprobante privado.');
+        $proof = PaymentProof::query()->create(['payment_id' => $payment->id, 'recorded_by' => $actor->id, 'path' => $path, 'mime' => $file->getMimeType(), 'size' => $file->getSize(), 'sha256' => $sha256]);
+        $payment->update(['status' => 'proof_uploaded', 'version' => $payment->version + 1]);
+        $this->review($actor, $order, $payment, 'proof_uploaded', 'Comprobante recibido; el ingreso sigue sin confirmar.', ['proof_id' => $proof->id]);
+
+        return $proof;
+    }
+
     public function reviewPayment(User $actor, Payment $payment, array $data): Payment
     {
         return $this->commerce->transaction($actor, 'confirm-payments', function (User $actor) use ($payment, $data): Payment {
-            $data = Validator::make($data, ['key' => 'required|uuid', 'version' => 'required|integer|min:1', 'result' => 'required|in:under_review,confirmed,rejected', 'notes' => 'required|string|min:20|max:3000'])->validate();
+            $data = Validator::make($data, ['key' => 'required|uuid', 'version' => 'required|integer|min:1', 'result' => 'required|in:under_review,confirmed,rejected', 'notes' => 'required|string|min:20|max:3000', 'funds_verified' => 'sometimes|accepted'])->validate();
             $data['payment_id'] = $payment->id;
 
             return $this->commerce->once($actor, 'review-payment', $data, function () use ($actor, $payment, $data): Payment {
                 $order = $this->checkout->lockOrder($payment->order);
                 $payment = Payment::query()->lockForUpdate()->findOrFail($payment->id);
                 Commerce::ensure($payment->version === (int) $data['version'], 'version', 'El registro cambió. Revisa su estado actual.');
-                $allowed = ['pending' => ['under_review', 'rejected'], 'proof_uploaded' => ['under_review', 'rejected'], 'under_review' => ['confirmed', 'rejected']];
-                Commerce::ensure(in_array($data['result'], $allowed[$payment->status] ?? [], true), 'result', 'Pasa por revisión antes de confirmar. Un cobro resuelto no se reescribe.');
+                $allowed = ['pending' => ['under_review', 'confirmed', 'rejected'], 'proof_uploaded' => ['under_review', 'confirmed', 'rejected'], 'under_review' => ['confirmed', 'rejected']];
+                Commerce::ensure(in_array($data['result'], $allowed[$payment->status] ?? [], true), 'result', 'El cobro ya se resolvió o la decisión no corresponde a su estado.');
+                $directConfirmation = $data['result'] === 'confirmed' && $payment->status !== 'under_review';
+                Commerce::ensure(! $directConfirmation || isset($data['funds_verified']), 'funds_verified', 'Confirma que comprobaste el abono real en la cuenta receptora. La captura no acredita el ingreso.');
                 $before = $payment->status;
                 $payment->update(['status' => $data['result'], 'version' => $payment->version + 1, 'reviewed_by' => $actor->id, 'confirmed_at' => $data['result'] === 'confirmed' ? Commerce::clock() : null]);
-                $this->review($actor, $order, $payment, $data['result'], $data['notes'], ['before' => $before]);
+                $this->review($actor, $order, $payment, $data['result'], $data['notes'], ['before' => $before, 'direct_confirmation' => $directConfirmation, 'funds_verified' => isset($data['funds_verified'])]);
                 $this->commerce->event($actor, 'payment_'.$data['result'], $order, $order->quote->lot, ['payment_id' => $payment->id]);
 
                 return $payment;

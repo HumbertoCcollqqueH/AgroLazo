@@ -9,6 +9,7 @@ use App\Policies\BuyerPolicy;
 use App\Policies\ProducerPolicy;
 use App\Policies\UserPolicy;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
@@ -29,6 +30,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        TrustProxies::at(config('security.trusted_proxy_cidrs', []));
         RateLimiter::for('provider-webhooks', fn (Request $request) => Limit::perMinute((int) config('security.webhook_limit', 300))->by(hash_hmac('sha256', (string) $request->ip(), (string) config('app.key'))));
         foreach (['manage-commerce', 'manage-pricing', 'manage-traceability'] as $ability) {
             Gate::define($ability, fn (User $user): bool => $user->hasPermission($ability));

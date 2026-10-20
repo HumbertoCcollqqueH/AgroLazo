@@ -91,7 +91,7 @@ class PaymentSettlementTest extends TestCase
     public function test_cash_still_needs_review_and_coordinator_cannot_confirm_or_bypass_a_stale_version(): void
     {
         $payment = $this->s->payment('100.00', ['method_id' => PaymentMethod::query()->where('code', 'cash')->sole()->id]);
-        $this->rejected(fn () => app(PaymentService::class)->reviewPayment($this->s->admin, $payment, $this->outcome()), 'result');
+        $this->rejected(fn () => app(PaymentService::class)->reviewPayment($this->s->admin, $payment, $this->outcome()), 'funds_verified');
         $this->actingAs($this->s->staff)->post(route('payments.review', $payment), $this->outcome())->assertForbidden();
         $payment = app(PaymentService::class)->reviewPayment($this->s->admin, $payment, $this->outcome('under_review'));
         $this->rejected(fn () => app(PaymentService::class)->reviewPayment($this->s->admin, $payment, $this->outcome()), 'version');

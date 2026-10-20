@@ -17,10 +17,12 @@ use App\Models\QualityGrade;
 use App\Models\Role;
 use App\Models\Unit;
 use App\Models\User;
+use App\Services\AutomatedMarketPriceProvider;
 use App\Services\LotAvailability;
 use App\Services\Messaging\ProducerPriceFlow;
 use App\Services\OfferPublication;
 use App\Services\OfferRegistry;
+use App\Services\OfferReview;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -92,6 +94,7 @@ class OfferController extends Controller
             'visibleLots' => $visibleLots, 'relatedLots' => $relatedLots,
             'latestAgreement' => $latestAgreement, 'activeAgreement' => $activeAgreement,
             'freeQuantity' => $freeQuantity, 'canPublishBalance' => $canPublishBalance,
+            'marketReference' => app(AutomatedMarketPriceProvider::class)->forOffer($offer),
         ]);
     }
 
@@ -104,12 +107,19 @@ class OfferController extends Controller
 
     public function transition(Request $request, Offer $offer): RedirectResponse
     {
+        if ((config('platform.internal_communication') || $request->has('price_mode')) && $request->input('result') === 'verified' && $offer->status !== 'published') {
+            $agreement = app(OfferReview::class)->approve($request->user(), $offer, $request->all());
+
+            return back()->with('status', $agreement
+                ? 'Revisión completada y precio enviado al productor dentro de AgroLazo. Cuando acepte, su cantidad se publicará y agrupará automáticamente; no necesitas otra aprobación.'
+                : 'Datos aprobados. No encontramos una referencia de precio vigente compatible. Completa el precio aquí para que el productor pueda aceptar y publicar; no necesita otra revisión de datos.');
+        }
         $offer = $this->registry->transition($request->user(), $offer, $request->all());
         if ($offer->status === 'verified') {
             try {
                 $message = app(ProducerPriceFlow::class)->queue($offer);
                 if ($message) {
-                    return back()->with('status', 'Oferta verificada. El asistente preparó el siguiente paso de precio para el productor por WhatsApp.');
+                    return back()->with('status', 'Oferta verificada. Se preparó la propuesta de precio para el productor.');
                 }
             } catch (\Throwable $exception) {
                 report($exception);
@@ -125,14 +135,16 @@ class OfferController extends Controller
     {
         $this->registry->proposeAgreement($request->user(), $offer, $request->all());
 
-        return back()->with('status', 'Condiciones propuestas. Falta registrar la decisión del productor.');
+        return back()->with('status', 'Precio enviado al productor. Al aceptarlo, su oferta se publicará automáticamente.');
     }
 
     public function decide(Request $request, Offer $offer, OfferPriceAgreement $agreement): RedirectResponse
     {
-        $this->registry->decideAgreement($request->user(), $offer, $agreement, $request->all());
+        app(OfferPublication::class)->decide($request->user(), $offer, $agreement, $request->all());
 
-        return back()->with('status', 'Decisión del productor registrada con su evidencia.');
+        return back()->with('status', $request->input('decision') === 'accepted'
+            ? 'Aceptación registrada y cantidad publicada para compradores. La agrupación compatible se resolvió automáticamente.'
+            : 'El productor no aceptó este precio. La oferta sigue guardada; acuerden otra propuesta desde Conversaciones.');
     }
 
     public function upload(Request $request, Offer $offer): RedirectResponse

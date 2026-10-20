@@ -19,7 +19,7 @@ class UpdateUserAccessRequest extends FormRequest
     {
         return [
             'active' => ['required', 'boolean'],
-            'role' => ['required', 'string', Rule::in(['admin', 'coordinator', 'buyer'])],
+            'role' => ['required', 'string', Rule::in(['admin', 'coordinator', 'buyer', 'producer'])],
             'reason' => ['required', 'string', 'min:5', 'max:500'],
         ];
     }

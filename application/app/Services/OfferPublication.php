@@ -4,12 +4,15 @@ namespace App\Services;
 
 use App\Models\Lot;
 use App\Models\Offer;
+use App\Models\OfferPriceAgreement;
 use App\Models\OperationKey;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class OfferPublication
@@ -19,6 +22,43 @@ class OfferPublication
         private AutomaticLotGrouping $grouping,
         private LotAvailability $availability,
     ) {}
+
+    /** Acceptance and publication form one operation, including assisted decisions. */
+    public function decide(User $actor, Offer $offer, OfferPriceAgreement $agreement, array $data): bool
+    {
+        return DB::transaction(function () use ($actor, $offer, $agreement, $data): bool {
+            Role::query()->where('code', 'admin')->lockForUpdate()->firstOrFail();
+            $actor = User::query()->findOrFail($actor->id);
+            $offer = Offer::query()->lockForUpdate()->findOrFail($offer->id);
+            $owner = $actor->active && $actor->hasRole('producer') && $actor->producer?->id === $offer->producer_id;
+            if (! $owner) {
+                Gate::forUser($actor)->authorize('manage-offers');
+                Gate::forUser($actor)->authorize('manage-lots');
+            }
+            $data = Validator::make($data, [
+                'version' => 'required|integer|min:1', 'decision' => ['required', Rule::in(['accepted', 'rejected'])],
+                'evidence' => 'required|string|min:10|max:2000',
+            ])->validate();
+            $agreement = $offer->agreements()->lockForUpdate()->findOrFail($agreement->id);
+            $this->ensure($offer->version === (int) $data['version'], 'version', 'La oferta cambió. Revisa el precio y los datos actuales.');
+            $this->ensure($agreement->offer_version === $offer->version && $offer->agreements()->latest('version')->value('id') === $agreement->id, 'agreement', 'La propuesta cambió. Responde a la propuesta vigente.');
+
+            if ($offer->status === 'published' && $agreement->status === 'accepted' && $data['decision'] === 'accepted') {
+                return false;
+            }
+
+            $this->registry->decideAgreement($actor, $offer, $agreement, $data);
+            if ($data['decision'] === 'accepted') {
+                $publisher = $owner ? User::query()->findOrFail($agreement->proposed_by) : $actor;
+                $this->publish($publisher, $offer, [
+                    'version' => $offer->version, 'agreement_id' => $agreement->id, 'source_key' => (string) Str::uuid(),
+                    'reason' => 'Publicación automática tras registrar la aceptación expresa del productor. Propuesta #'.$agreement->id.'. Registrada por usuario #'.$actor->id.'.',
+                ]);
+            }
+
+            return true;
+        }, 3);
+    }
 
     /** @param array{version: int|string, agreement_id: int|string, source_key: string, reason: string} $data */
     public function publish(User $actor, Offer $offer, array $data): Lot

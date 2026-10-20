@@ -106,7 +106,7 @@ class SettlementService
                 Commerce::ensure(hash_equals($latest->snapshot_hash, $this->snapshot($order, $settlement->producer_id)['snapshot_hash']), 'settlement', 'Hay nuevas recepciones. Calcula y aprueba la liquidación vigente.');
                 $held = (int) $this->payouts($order, $settlement->producer_id)->whereIn('status', PaymentService::HELD)->sum('amount_minor');
                 Commerce::ensure($data['amount_minor'] <= $latest->net_minor - $held, 'amount', 'El importe supera el saldo disponible después de todos los desembolsos y autorizaciones anteriores.');
-                $payout = ProducerPayout::query()->create(['producer_settlement_id' => $settlement->id, 'order_id' => $order->id, 'producer_id' => $settlement->producer_id, 'authorized_by' => $actor->id, 'amount_minor' => $data['amount_minor'], 'status' => 'authorized', 'version' => 1, 'reason' => $data['reason']]);
+                $payout = ProducerPayout::query()->create(['producer_settlement_id' => $settlement->id, 'order_id' => $order->id, 'producer_id' => $settlement->producer_id, 'authorized_by' => $actor->id, 'amount_minor' => $data['amount_minor'], 'status' => 'authorized', 'version' => 1, 'reason' => $data['reason'], 'recipient_snapshot' => app(ProducerPayoutProfiles::class)->snapshot($actor, $settlement->producer)]);
                 $this->payments->review($actor, $order, null, 'payout_authorized', $data['reason'], ['payout_id' => $payout->id]);
 
                 return $payout;

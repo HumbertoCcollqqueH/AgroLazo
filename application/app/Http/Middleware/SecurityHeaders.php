@@ -55,7 +55,8 @@ class SecurityHeaders
         $response->headers->set('X-Frame-Options', 'DENY');
         $response->headers->set('Referrer-Policy', 'no-referrer');
         $response->headers->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self)');
-        $response->headers->set('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: https://tile.openstreetmap.org; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'");
+        $socketOrigin = preg_replace('/^http/', 'ws', rtrim((string) config('app.url'), '/'));
+        $response->headers->set('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: https://tile.openstreetmap.org; font-src 'self'; connect-src 'self' {$socketOrigin}; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'");
         $response->headers->remove('X-Powered-By');
         if ($production && $request->isSecure()) {
             $response->headers->set('Strict-Transport-Security', 'max-age=31536000');

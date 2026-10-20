@@ -78,6 +78,19 @@ class OfferRegistry
         });
     }
 
+    public function createOwn(User $actor, array $data): Offer
+    {
+        return $this->write(null, function () use ($actor, $data): Offer {
+            $actor = User::query()->lockForUpdate()->findOrFail($actor->id);
+            abort_unless($actor->active && $actor->hasRole('producer'), 403);
+            $producer = $actor->producer()->lockForUpdate()->firstOrFail();
+            $this->ensure($producer->canPublishOffers(), 'producer', 'Coordinación debe verificar tu ficha antes de recibir ofertas.');
+            $data = [...Arr::only($data, [...self::FIELDS, 'source_key']), 'producer_id' => $producer->id, 'reason' => 'Oferta confirmada por su productor en AgroLazo.'];
+
+            return $this->insert($actor, Validator::make($data, self::rules())->validate(), 'producer_portal');
+        });
+    }
+
     private function insert(?User $actor, array $data, string $channel): Offer
     {
         $hashData = Arr::except($data, ['reason']);
@@ -122,7 +135,7 @@ class OfferRegistry
             $this->history($offer, $actor, 'corrected', $changes, $data['reason']);
 
             return $offer->fresh();
-        });
+        }, $offer);
     }
 
     public function transition(User $actor, Offer $offer, array $data): Offer
@@ -148,6 +161,17 @@ class OfferRegistry
             $offer->status = $data['result'];
             $offer->save();
             $this->history($offer, $actor, 'status_changed', ['status' => ['before' => $before, 'after' => $offer->status]], $data['reason']);
+            if ($user = $offer->producer->user) {
+                $next = match ($offer->status) {
+                    'needs_information' => 'Revisa la observación, corrige los datos y vuelve a enviarla desde tu oferta.',
+                    'verified' => 'La revisión del equipo está completa. Revisa el precio aquí y acepta para publicar automáticamente. Todavía no es una venta.',
+                    'published' => 'Ya está disponible para los compradores. Te avisaremos cuando compren tu aportación.',
+                    'cancelled', 'expired', 'rejected' => 'Esta oferta no está disponible para nuevas compras. Puedes crear otra desde Mi producción o consultar con coordinación.',
+                    default => 'Consulta los próximos pasos en el detalle de tu oferta.',
+                };
+                ProducerPortal::notify($user, 'Oferta #'.$offer->id.': '.Offer::STATUSES[$offer->status].'. '.$data['reason'].' '.$next,
+                    route('producer.offers.show', $offer), 'offer-status:'.$offer->histories()->max('id'));
+            }
 
             return $offer->fresh();
         });
@@ -192,13 +216,16 @@ class OfferRegistry
             $net = bcsub($data['gross_unit_price'], $data['producer_unit_cost'], 6);
             $this->ensure(bccomp($net, '0', 6) > 0, 'producer_unit_cost', 'El neto del productor debe ser positivo y los costos menores al bruto.');
             $until = CarbonImmutable::parse($data['valid_until'], 'America/Lima')->endOfDay()->utc();
-            $this->ensure($until->isFuture() && $data['valid_until'] <= $offer->available_until->toDateString(), 'valid_until', 'La vigencia debe ser futura y no superar la disponibilidad.');
+            $this->ensure($until->isFuture() && $data['valid_until'] >= $offer->available_from->toDateString() && $data['valid_until'] <= $offer->available_until->toDateString(), 'valid_until', 'El precio debe seguir vigente al iniciar la disponibilidad y no superar su fecha final.');
             $agreement = $offer->agreements()->create([
                 'offer_version' => $offer->version, 'version' => (int) $offer->agreements()->max('version') + 1,
                 'gross_unit_price' => $data['gross_unit_price'], 'producer_unit_cost' => $data['producer_unit_cost'], 'net_unit_price' => $net,
                 'terms' => $data['terms'], 'valid_until' => $until, 'proposed_by' => $actor->id, 'status' => 'proposed', 'currency' => 'PEN',
             ]);
             $this->history($offer, $actor, 'agreement_proposed', ['agreement_id' => $agreement->id], 'Propuesta de condiciones económicas; aún sin aceptación.');
+            if ($user = $offer->producer->user) {
+                ProducerPortal::notify($user, 'Tu oferta #'.$offer->id.' está lista para confirmar: S/ '.rtrim(rtrim($net, '0'), '.').' por '.$offer->baseUnit->code.'. Revisa el total y pulsa «Aceptar precio y publicar». Si no estás de acuerdo, solicita otro precio desde Conversaciones.', route('producer.offers.show', $offer), 'agreement:'.$agreement->id);
+            }
 
             return $agreement;
         });
@@ -223,7 +250,7 @@ class OfferRegistry
             $this->history($offer, $actor, 'agreement_'.$data['decision'], ['agreement_id' => $agreement->id], 'Constancia de la decisión del productor sobre condiciones económicas.');
 
             return $agreement;
-        });
+        }, $offer);
     }
 
     public function expire(): int
@@ -234,6 +261,9 @@ class OfferRegistry
                 $before = $offer->status;
                 $offer->update(['status' => 'expired']);
                 $this->history($offer, null, 'expired', ['status' => ['before' => $before, 'after' => 'expired']], 'Finalizó la ventana de disponibilidad; se conservan los compromisos existentes.');
+                if ($user = $offer->producer->user) {
+                    ProducerPortal::notify($user, 'La disponibilidad de tu oferta #'.$offer->id.' terminó. No admite nuevas compras; las ventas ya confirmadas conservan su seguimiento. Puedes crear otra oferta desde Mi producción.', route('producer.offers.show', $offer), 'offer-expired:'.$offer->id.':'.$offer->version);
+                }
             }
 
             return $offers->count();
@@ -304,13 +334,17 @@ class OfferRegistry
         AuditLog::record($actor, 'offer.'.$action, $offer, ['version' => $offer->version, 'status' => $offer->status], 'offer_operation');
     }
 
-    private function write(?User $actor, Closure $callback): mixed
+    private function write(?User $actor, Closure $callback, ?Offer $ownedOffer = null): mixed
     {
-        return DB::transaction(function () use ($actor, $callback): mixed {
+        return DB::transaction(function () use ($actor, $callback, $ownedOffer): mixed {
             Role::query()->where('code', 'admin')->lockForUpdate()->firstOrFail();
             if ($actor) {
                 $actor = User::query()->findOrFail($actor->id);
-                Gate::forUser($actor)->authorize('manage-offers');
+                $owns = $ownedOffer !== null && $actor->active && $actor->hasRole('producer')
+                    && $actor->producer()->whereKey($ownedOffer->producer_id)->where('status', 'verified')->exists();
+                if (! $owns) {
+                    Gate::forUser($actor)->authorize('manage-offers');
+                }
             }
 
             return $callback($actor);

@@ -22,7 +22,10 @@ class AuthenticatedSessionController extends Controller
         $request->session()->regenerate();
         $request->user()->forceFill(['last_login_at' => now()])->save();
 
-        return redirect()->intended(route($request->user()->landingRoute(), absolute: false));
+        $landing = str_contains($request->userAgent() ?? '', 'AgroLazoAndroid/') && $request->user()->hasPermission('view-operations')
+            ? 'marketplace.index' : $request->user()->landingRoute();
+
+        return redirect()->intended(route($landing, absolute: false));
     }
 
     public function destroy(Request $request): RedirectResponse

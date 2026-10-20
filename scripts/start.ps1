@@ -105,7 +105,7 @@ try {
     if ($applicationEnv -match '(?m)^APP_ENV=local\s*$' -and $applicationEnv -match '(?m)^MAIL_HOST=mailpit\s*$') {
         Invoke-LocalCommand -Executable 'docker' -Arguments ($composeArguments + @('--profile', 'mail', 'up', '-d', 'mailpit')) -Step 'El inicio del buzon de correo local'
     }
-    Invoke-LocalCommand -Executable 'docker' -Arguments ($composeArguments + @('up', '-d', '--wait', '--wait-timeout', '120', 'app', 'nginx')) -Step 'El inicio de la aplicacion web'
+    Invoke-LocalCommand -Executable 'docker' -Arguments ($composeArguments + @('up', '-d', '--wait', '--wait-timeout', '120', 'app', 'nginx', 'reverb', 'realtime-worker')) -Step 'El inicio de la aplicacion web y las conversaciones'
     Invoke-LocalCommand -Executable 'docker' -Arguments ($composeArguments + @('--profile', 'workers', 'up', '-d', '--no-deps', '--force-recreate', 'queue', 'scheduler')) -Step 'El inicio de los procesos de fondo'
     if (Test-Path -LiteralPath (Join-Path $projectRoot 'docker-compose.evolution.yml')) {
         Invoke-LocalCommand -Executable 'docker' -Arguments ($composeArguments + @('--profile', 'messaging', 'up', '-d', '--wait', '--wait-timeout', '180', 'evolution')) -Step 'El inicio de Evolution y sus servicios privados'

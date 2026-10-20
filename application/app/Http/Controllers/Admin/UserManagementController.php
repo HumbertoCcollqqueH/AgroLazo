@@ -24,7 +24,7 @@ class UserManagementController extends Controller
 
         $filters = $request->validate([
             'q' => ['nullable', 'string', 'max:100'],
-            'role' => ['nullable', Rule::in(['admin', 'coordinator', 'buyer'])],
+            'role' => ['nullable', Rule::in(['admin', 'coordinator', 'buyer', 'producer'])],
             'active' => ['nullable', 'boolean'],
             'buyer_status' => ['nullable', Rule::in(['pending', 'approved', 'suspended'])],
         ]);
@@ -61,7 +61,7 @@ class UserManagementController extends Controller
 
         return view('admin.users.index', [
             'creating' => true,
-            'roles' => Role::query()->whereIn('code', ['admin', 'coordinator', 'buyer'])->orderBy('id')->get(),
+            'roles' => Role::query()->whereIn('code', ['admin', 'coordinator', 'buyer', 'producer'])->orderBy('id')->get(),
         ]);
     }
 

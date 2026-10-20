@@ -41,7 +41,9 @@ class LoginRequest extends FormRequest
             ]);
         }
 
-        if (! Auth::attempt([...$this->only('email', 'password'), 'active' => true], $this->boolean('remember'))) {
+        $remember = str_contains($this->userAgent() ?? '', 'AgroLazoAndroid/') || $this->boolean('remember');
+
+        if (! Auth::attempt([...$this->only('email', 'password'), 'active' => true], $remember)) {
             RateLimiter::hit($this->throttleKey(), 60);
 
             throw ValidationException::withMessages(['email' => 'Las credenciales no son válidas o la cuenta no está habilitada.']);

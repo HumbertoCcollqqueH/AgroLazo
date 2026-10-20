@@ -56,6 +56,11 @@ class ConversationEngine
 
     private function respond(Conversation $c, Message $message): ?string
     {
+        if (config('platform.internal_communication') && $c->provider !== 'fake') {
+            $message->metadata = [...($message->metadata ?? []), 'ignored_reason' => 'internal_channel_only'];
+
+            return null;
+        }
         if (! app(RegisteredContactPolicy::class)->accepts($c)) {
             $message->metadata = [...($message->metadata ?? []), 'ignored_reason' => 'unregistered_contact'];
 

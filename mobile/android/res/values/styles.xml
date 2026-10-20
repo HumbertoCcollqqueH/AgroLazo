@@ -1,0 +1,10 @@
+<resources>
+    <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:fontFamily">sans</item><item name="android:colorAccent">#23553B</item>
+        <item name="android:windowLightStatusBar">false</item><item name="android:statusBarColor">#153F2D</item><item name="android:navigationBarColor">#153F2D</item>
+        <item name="android:windowActionModeOverlay">true</item><item name="android:windowBackground">#F6F7F1</item>
+    </style>
+    <string name="default_server">https://unconfigured.invalid</string>
+    <string name="asset_statements" translatable="false">[]</string>
+    <item type="id" name="agrolazo_web" />
+</resources>

@@ -21,6 +21,9 @@ class PrepareWhatsAppConnection implements ShouldQueue
 
     public function handle(EvolutionConnectionManager $manager): void
     {
+        if (config('platform.internal_communication')) {
+            return;
+        }
         $lock = Cache::lock('whatsapp:connection:prepare', 100);
         if (! $lock->get()) {
             return;

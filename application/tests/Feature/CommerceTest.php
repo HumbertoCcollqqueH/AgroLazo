@@ -85,6 +85,45 @@ class CommerceTest extends TestCase
         ]);
     }
 
+    public function test_quote_validation_returns_to_its_form_after_background_notifications(): void
+    {
+        $form = route('commerce.quotes.create', $this->lot);
+        $this->actingAs($this->buyer)->get($form)->assertOk();
+        $this->getJson(route('coordination.updates'))->assertOk();
+        $data = ['key' => (string) Str::uuid(), 'quantity' => '9999', 'policy_id' => $this->policy->id,
+            'delivery_address' => CommerceScenario::address(), 'delivery_details' => 'Entrega en dirección indicada', 'payment_method' => 'coordinated'];
+        $this->post(route('commerce.quotes.store', $this->lot), $data)
+            ->assertRedirect($form)->assertSessionHasErrors('quantity')->assertSessionHasInput('quantity', '9999');
+        $this->assertDatabaseCount('quotes', 0);
+    }
+
+    public function test_quote_missing_key_returns_to_its_form_instead_of_another_open_page(): void
+    {
+        $this->actingAs($this->buyer)->get(route('notifications.index'))->assertOk();
+        $this->post(route('commerce.quotes.store', $this->lot), ['quantity' => '25'])
+            ->assertRedirectToRoute('commerce.quotes.create', $this->lot)->assertSessionHasErrors('key');
+    }
+
+    public function test_quote_success_opens_the_quote_without_creating_an_order_after_polling(): void
+    {
+        $this->actingAs($this->buyer)->getJson(route('coordination.updates'))->assertOk();
+        $response = $this->post(route('commerce.quotes.store', $this->lot), [
+            'key' => (string) Str::uuid(), 'quantity' => '25', 'policy_id' => $this->policy->id,
+            'delivery_address' => CommerceScenario::address(), 'delivery_details' => 'Entrega en dirección indicada', 'payment_method' => 'coordinated',
+        ]);
+        $quote = Quote::query()->sole();
+        $response->assertRedirectToRoute('commerce.quotes.show', $quote);
+        $this->assertDatabaseCount('orders', 0);
+    }
+
+    public function test_quote_page_is_preserved_when_notifications_are_requested_as_ajax(): void
+    {
+        $form = route('commerce.quotes.create', $this->lot);
+        $this->actingAs($this->buyer)->get($form)->assertOk();
+        $this->getJson(route('coordination.updates'), ['X-Requested-With' => 'XMLHttpRequest'])
+            ->assertOk()->assertSessionHas('_previous.url', $form);
+    }
+
     protected function command(array $extra = []): array
     {
         return ['key' => (string) Str::uuid(), 'accepted' => '1', 'requested_delivery_on' => now('America/Lima')->addDays(2)->toDateString(), ...$extra];

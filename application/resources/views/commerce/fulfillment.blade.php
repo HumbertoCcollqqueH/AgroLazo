@@ -53,7 +53,7 @@
                         <x-field name="starts_at" label="Inicio (hora de Perú)" type="datetime-local" required />
                         <x-field name="ends_at" label="Fin (hora de Perú)" type="datetime-local" required />
                         <fieldset class="space-y-4 rounded-xl bg-[#f5f7f1] p-4"><legend class="font-semibold">Recojo de cada aportación</legend>
-                            <p class="text-xs leading-6">Registra el punto de recojo acordado con el productor y cuándo pasará nuestro transporte. Debe ser antes de la recepción en acopio. Estos datos se enviarán automáticamente por WhatsApp.</p>
+                            <p class="text-xs leading-6">Registra el punto de recojo acordado con el productor y cuándo pasará nuestro transporte. Debe ser antes de la recepción en acopio. Estos datos se enviarán automáticamente a su cuenta de AgroLazo.</p>
                             @foreach($order->items as $orderItem) @foreach($orderItem->allocations as $allocation)
                                 @if(bccomp($allocation->quantity, $allocation->released_quantity, 3) > 0)
                                     <div class="space-y-3 border-t border-[#dfe4da] pt-3"><p class="text-sm font-semibold">{{ $allocation->portion->offer->producer->full_name }} · Oferta #{{ $allocation->portion->offer_id }}</p>
@@ -163,7 +163,7 @@
 @endif
 @if($displayPermissions->contains('manage-commerce'))
     <x-commerce-panel title="Avisos de la operación" class="mt-6">
-        <p class="mb-4 text-xs leading-6 text-[#6f7d66]">Cada aviso al productor contiene únicamente su aportación. Un aviso en cola no acredita entrega por WhatsApp o SMS.</p>
+        <p class="mb-4 text-xs leading-6 text-[#6f7d66]">Cada aviso al productor contiene únicamente su aportación. {{ config('platform.internal_communication') ? 'Los avisos quedan en su cuenta de AgroLazo. Pendiente, disponible y leído son estados distintos.' : 'Un aviso en cola todavía no acredita su entrega al destinatario.' }}</p>
         @if(in_array($order->status, ['confirmed', 'collecting']))
             <form method="POST" action="{{ route('fulfillment.notices.recover', $order) }}" class="mb-5">
                 <x-commerce-key />
@@ -184,7 +184,7 @@
                 @if($noticeError)
                     <p class="mt-2 text-xs">{{ match ($noticeError) {
                         'contact_or_consent_required' => $order->synthetic ? 'Esta compra es de prueba. Falta una conversación autorizada del productor en el simulador; no se enviará al WhatsApp real.' : 'Falta un contacto actual con autorización para recibir mensajes. Revisa la ficha y Mensajería.',
-                        'synthetic_simulator_required' => 'Esta compra es de prueba. Falta una conversación autorizada en el simulador; no se enviará al WhatsApp real.',
+                        'producer_account_required' => 'Vincula una cuenta activa de productor desde su ficha para entregar el aviso dentro de AgroLazo.', 'internal_channel_only' => 'La comunicación se gestiona dentro de AgroLazo.', 'synthetic_simulator_required' => 'Esta compra es de prueba. Falta una conversación autorizada en el simulador; no se enviará al WhatsApp real.',
                         'inactive_user' => 'La cuenta destinataria está desactivada.',
                         'recipient_access_changed' => 'La persona destinataria ya no tiene acceso a esta operación.',
                         'operational_notice_changed', 'order_changed' => 'El aviso quedó desactualizado por un cambio en la orden. Consulta el aviso más reciente.',
@@ -199,4 +199,3 @@
         @endforelse
     </x-commerce-panel>
 @endif
-

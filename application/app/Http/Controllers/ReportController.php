@@ -24,8 +24,11 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReportController extends Controller
 {
-    public function dashboard(ReportFilterRequest $request, ReportService $reports, OperationsDashboard $operations): View
+    public function dashboard(ReportFilterRequest $request, ReportService $reports, OperationsDashboard $operations): View|RedirectResponse
     {
+        if ($request->user()->hasRole('producer') && ! $request->user()->hasPermission('view-operations')) {
+            return to_route('producer.home');
+        }
         $actor = $request->user();
         $permissions = $actor->permissionCodes();
         $isOperator = $permissions->contains('view-operations');

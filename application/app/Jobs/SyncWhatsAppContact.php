@@ -20,6 +20,9 @@ class SyncWhatsAppContact implements ShouldQueue
 
     public function handle(EvolutionConnectionManager $manager): void
     {
+        if (config('platform.internal_communication')) {
+            return;
+        }
         $manager->syncContact($this->producerId);
     }
 }

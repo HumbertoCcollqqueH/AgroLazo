@@ -96,7 +96,9 @@
         @endif
 
         <aside class="op-dash-coordinator-support" aria-label="Herramientas de coordinación">
-            @if($displayPermissions->contains('manage-messaging'))
+            @if(config('platform.internal_communication'))
+                <section class="op-dash-message-card"><span class="op-dash-icon-box"><x-ac-icon name="users" /></span><p class="op-dash-eyebrow">ATENCIÓN Y COORDINACIÓN</p><h2>Resuelve el siguiente paso con tu equipo.</h2><p>Atiende consultas de productores y compradores. Todas las respuestas quedan en su cuenta.</p><a class="op-dash-button" href="{{ route('coordination.index') }}">Abrir conversaciones <x-ac-icon name="arrow" /></a></section>
+            @elseif($displayPermissions->contains('manage-messaging'))
                 <section class="op-dash-message-card"><span class="op-dash-icon-box"><x-ac-icon name="whatsapp" /></span><p class="op-dash-eyebrow">ATENCIÓN AL PRODUCTOR</p><h2>Una conversación puede destrabar el siguiente paso.</h2><p><strong>{{ $counts['conversations_attention'] }}</strong> conversaciones requieren asistencia.</p><a class="op-dash-button" href="{{ route('messaging.index') }}">Abrir conversaciones <x-ac-icon name="arrow" /></a></section>
             @endif
             <section class="op-dash-tools">

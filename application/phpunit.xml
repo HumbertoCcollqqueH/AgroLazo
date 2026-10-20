@@ -19,6 +19,14 @@
         </include>
     </source>
     <php>
+        <env name="APP_URL" value="http://localhost:8080" force="true"/>
+        <server name="APP_URL" value="http://localhost:8080"/>
+        <env name="TRUSTED_PROXY_CIDRS" value="" force="true"/>
+        <server name="TRUSTED_PROXY_CIDRS" value=""/>
+        <env name="SESSION_SECURE_COOKIE" value="false" force="true"/>
+        <server name="SESSION_SECURE_COOKIE" value="false"/>
+        <env name="PLATFORM_INTERNAL_COMMUNICATION" value="false" force="true"/>
+        <server name="PLATFORM_INTERNAL_COMMUNICATION" value="false"/>
         <env name="COMMERCE_MINIMUM_PURCHASE_KG" value="0" force="true"/>
         <server name="COMMERCE_MINIMUM_PURCHASE_KG" value="0" force="true"/>
         <env name="LOGISTICS_REQUIRE_COORDINATES" value="false" force="true"/>
@@ -35,7 +43,8 @@
         <server name="DB_URL" value=""/>
         <env name="APP_ENV" value="testing" force="true"/>
         <env name="APP_CONFIG_CACHE" value="bootstrap/cache/phpunit-config.php" force="true"/>
-        <env name="APP_MAINTENANCE_DRIVER" value="file"/>
+        <env name="APP_MAINTENANCE_DRIVER" value="array" force="true"/>
+        <server name="APP_MAINTENANCE_DRIVER" value="array"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
         <env name="CACHE_STORE" value="array"/>

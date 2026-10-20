@@ -80,6 +80,9 @@ class MessageDelivery
 
     public function blockedReason(Message $message): ?string
     {
+        if (config('platform.internal_communication') && $message->provider !== 'fake') {
+            return 'internal_channel_only';
+        }
         $c = $message->conversation;
         if ($c->producer?->seed_batch !== null && $message->provider !== 'fake') {
             return 'generated_contact';

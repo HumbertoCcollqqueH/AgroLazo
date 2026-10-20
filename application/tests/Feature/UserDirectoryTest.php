@@ -94,7 +94,10 @@ class UserDirectoryTest extends TestCase
         $response = $this->get(route('admin.users.index'))->assertOk();
         $html = $response->getContent();
         $this->assertSame(1, substr_count($html, 'value="no"'));
-        $this->assertMatchesRegularExpression('/<details[^>]*class="group border-t border-slate-100"[^>]*\sopen\s*>/', $html);
+        $document = new \DOMDocument;
+        @$document->loadHTML($html);
+        $xpath = new \DOMXPath($document);
+        $this->assertSame(1, $xpath->query('//details[@open]//input[@name="access_user_id" and @value="'.$target->id.'"]')->length);
         $this->assertTrue($target->fresh()->active);
         $this->assertTrue($target->fresh()->hasRole('coordinator'));
     }

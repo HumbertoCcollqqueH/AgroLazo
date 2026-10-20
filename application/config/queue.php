@@ -31,6 +31,15 @@ return [
 
     'connections' => [
 
+        'realtime' => [
+            'driver' => 'redis',
+            'connection' => env('REDIS_QUEUE_CONNECTION', 'default'),
+            'queue' => 'realtime',
+            'retry_after' => 90,
+            'block_for' => 5,
+            'after_commit' => true,
+        ],
+
         'sync' => [
             'driver' => 'sync',
         ],

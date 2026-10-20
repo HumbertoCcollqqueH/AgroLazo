@@ -22,13 +22,13 @@
             <div><label for="type" class="mb-2 block text-sm font-semibold">Tipo de productor</label><select id="type" name="type" required class="w-full rounded-xl border border-[#cdd8c7] bg-white px-4 py-3"><option value="">Selecciona una opción</option>@foreach(\App\Models\Producer::TYPES as $key => $label)<option value="{{ $key }}" @selected(old('type', $producer?->type) === $key)>{{ $label }}</option>@endforeach</select></div>
             <fieldset class="rounded-2xl border border-[#dfe4da] p-5">
                 <legend class="px-2 font-semibold">Productos que produce</legend>
-                <p class="text-sm leading-6 text-[#6f7d66]">Marca uno o varios. WhatsApp usará estos productos para ayudarle a registrar sus ofertas; si tiene uno solo, no tendrá que elegirlo otra vez.</p>
+                <p class="text-sm leading-6 text-[#6f7d66]">Marca uno o varios. AgroLazo usará estos productos para ayudarle a registrar sus ofertas; si tiene uno solo, no tendrá que elegirlo otra vez.</p>
                 <input type="hidden" name="product_ids" value="">
                 <div class="mt-4 grid gap-3 sm:grid-cols-2">
                     @forelse($products as $product)
                         <label class="flex items-start gap-3 rounded-xl border border-[#dfe4da] p-3 text-sm">
                             <input type="checkbox" name="product_ids[]" value="{{ $product->id }}" @checked(in_array((string) $product->id, $selectedProductIds, true)) class="mt-1 accent-[#22583e]">
-                            <span>{{ $product->name }}@unless($product->isUsable())<span class="block text-xs text-[#788373]">Referencia anterior inactiva; no se ofrecerá por WhatsApp.</span>@endunless</span>
+                            <span>{{ $product->name }}@unless($product->isUsable())<span class="block text-xs text-[#788373]">Referencia anterior inactiva; no se ofrecerá en el catálogo.</span>@endunless</span>
                         </label>
                     @empty
                         <p class="text-sm text-[#6f7d66]">Todavía no hay productos activos en el catálogo.</p>
@@ -50,7 +50,7 @@
             <details class="rounded-2xl border border-[#dfe4da] p-5" @if($currentLocation || $errors->any()) open @endif>
                 <summary class="cursor-pointer font-semibold">Ubicación <span class="ml-2 text-xs font-normal text-[#788373]">Opcional</span></summary>
                 <div class="mt-5 space-y-5">
-                    <div><label for="location_id" class="mb-2 block text-sm font-semibold">Localidad del catálogo</label><select id="location_id" name="location_id" class="w-full rounded-xl border border-[#cdd8c7] bg-white px-4 py-3"><option value="">Sin localidad asignada</option>@foreach($locations as $location)<option value="{{ $location->id }}" @selected((string) old('location_id', $currentLocation?->location_id) === (string) $location->id)>{{ $location->name }} · {{ \App\Models\Location::TYPES[$location->type] }}{{ $location->parent ? ' · '.$location->parent->name : '' }}{{ !$location->isUsable() ? ' (referencia anterior inactiva)' : '' }}</option>@endforeach</select><p class="mt-2 text-xs leading-5 text-[#6f7d66]">Selecciona la ubicación más precisa disponible. WhatsApp la usará al preparar sus ofertas y el productor podrá cambiarla si su producto está en otro lugar.</p></div>
+                    <div><label for="location_id" class="mb-2 block text-sm font-semibold">Localidad del catálogo</label><select id="location_id" name="location_id" class="w-full rounded-xl border border-[#cdd8c7] bg-white px-4 py-3"><option value="">Sin localidad asignada</option>@foreach($locations as $location)<option value="{{ $location->id }}" @selected((string) old('location_id', $currentLocation?->location_id) === (string) $location->id)>{{ $location->name }} · {{ \App\Models\Location::TYPES[$location->type] }}{{ $location->parent ? ' · '.$location->parent->name : '' }}{{ !$location->isUsable() ? ' (referencia anterior inactiva)' : '' }}</option>@endforeach</select><p class="mt-2 text-xs leading-5 text-[#6f7d66]">Selecciona la ubicación más precisa disponible. AgroLazo la usará al preparar sus ofertas y el productor podrá cambiarla si su producto está en otro lugar.</p></div>
                     <x-field name="community" label="Comunidad o sector" :value="$currentLocation?->community" maxlength="150" />
                     <x-field name="address" label="Dirección o referencia" :value="$currentLocation?->address" maxlength="500" />
                     <div class="grid gap-5 sm:grid-cols-2"><x-field name="latitude" label="Latitud" :value="$currentLocation?->latitude" inputmode="decimal" placeholder="-15.840200" /><x-field name="longitude" label="Longitud" :value="$currentLocation?->longitude" inputmode="decimal" placeholder="-70.021900" /></div>

@@ -40,6 +40,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'admin' => ['Administrador', array_keys($permissions)],
             'coordinator' => ['Coordinador', ['view-operations', 'view-catalogs', 'view-producers', 'manage-producers', 'verify-producers', 'view-offers', 'manage-offers', 'manage-messaging', 'view-lots', 'manage-lots', 'manage-commerce', 'manage-traceability']],
             'buyer' => ['Comprador', ['view-buyer-area', 'place-orders']],
+            'producer' => ['Productor', []],
         ];
 
         foreach ($roles as $code => [$name, $grants]) {

@@ -4,9 +4,13 @@
         <p class="text-xs font-bold uppercase tracking-widest text-[#819077]">{{ $accountUser ? 'Datos de acceso' : 'Nuevas conexiones con el campo' }}</p>
         <h1 class="mt-3 text-3xl font-semibold tracking-tight">{{ $accountUser ? 'Mi perfil' : 'Crea tu cuenta de comprador' }}</h1>
         @if($accountUser)
+            @if(str_contains(request()->userAgent() ?? '', 'AgroLazoAndroid/'))
+                <form method="POST" action="{{ route('logout') }}" class="mt-5">@csrf<button type="submit" class="native-profile-logout"><x-ac-icon name="logout" />Cerrar sesión en este teléfono</button></form>
+            @endif
             <p class="mt-3 text-sm leading-6 text-[#6f7d66]">Actualiza tu nombre y tu correo de acceso. Conservas tu cuenta, tus permisos y todo tu historial. Deja la nueva contraseña vacía si quieres mantener la actual.</p>
             @if($accountUser->hasRole('admin'))<p class="mt-4 rounded-xl bg-[#edf5e8] p-4 text-sm"><strong>Administrador con acceso completo.</strong> Puedes crear usuarios, aprobar compradores y gestionar ofertas y publicaciones. Personaliza aquí los datos iniciales de tu cuenta.</p>@endif
         @else
+            <a class="pp-register-switch" href="{{ route('producer.register') }}"><x-ac-icon name="leaf" /><span><strong>¿Produces en el campo?</strong> Crea tu cuenta de productor aquí →</span></a>
             <p class="mt-3 text-sm leading-6 text-[#6f7d66]">Un administrador revisará tu perfil antes de habilitar las compras. Tu cuenta te permitirá consultar el estado de esa revisión.</p>
         @endif
         <form method="POST" action="{{ $accountUser ? route('account.update') : route('register') }}" class="mt-7 space-y-5">

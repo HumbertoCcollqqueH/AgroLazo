@@ -1,0 +1,10 @@
+[
+    {
+        "relation": ["delegate_permission/common.get_login_creds"],
+        "target": {
+            "namespace": "android_app",
+            "package_name": "pe.agrolazo.app",
+            "sha256_cert_fingerprints": ["C3:0A:A9:0E:DA:DA:B9:53:65:32:C5:EA:4B:BA:EA:50:EE:B4:24:AB:34:3B:C1:E6:AC:CB:91:30:D2:7B:BB:63"]
+        }
+    }
+]

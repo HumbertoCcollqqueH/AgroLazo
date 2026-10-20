@@ -40,6 +40,7 @@ use App\Services\PurchaseQuantity;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class CommerceController extends Controller
@@ -84,7 +85,11 @@ class CommerceController extends Controller
 
     public function quote(CommerceRequest $request, Lot $lot, PricingService $pricing): mixed
     {
-        $quote = $pricing->issue($request->user(), $lot, $request->all());
+        try {
+            $quote = $pricing->issue($request->user(), $lot, $request->all());
+        } catch (ValidationException $exception) {
+            throw $exception->redirectTo(route('commerce.quotes.create', $lot));
+        }
 
         return $request->expectsJson() ? (new QuoteResource($quote))->response()->setStatusCode(201) : to_route('commerce.quotes.show', $quote)->with('status', 'Cotización emitida. Revisa el desglose antes de reservar o comprar.');
     }

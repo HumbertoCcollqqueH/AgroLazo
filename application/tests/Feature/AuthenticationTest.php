@@ -18,7 +18,11 @@ class AuthenticationTest extends TestCase
     public function test_guests_can_open_access_forms_and_are_redirected_from_the_dashboard(): void
     {
         $this->get(route('login'))->assertViewIs('auth.login');
-        $this->get(route('register'))->assertViewIs('auth.register');
+        $this->get(route('register'))->assertViewIs('auth.choose-account')
+            ->assertSee('Soy comprador')->assertSee('Soy productor')
+            ->assertSee(route('producer.register'))->assertSee(route('register', ['type' => 'buyer']));
+        $this->get(route('register', ['type' => 'buyer']))->assertViewIs('auth.register');
+        $this->get(route('register', ['type' => 'admin']))->assertViewIs('auth.choose-account');
         $this->get(route('password.request'))->assertViewIs('auth.forgot-password');
         $this->get(route('dashboard'))->assertRedirectToRoute('login');
     }

@@ -50,6 +50,11 @@ class User extends Authenticatable
         return $this->hasOne(Buyer::class);
     }
 
+    public function producer(): HasOne
+    {
+        return $this->hasOne(Producer::class);
+    }
+
     public function hasRole(string $code): bool
     {
         return $this->roles()->where('code', $code)->exists();
@@ -57,6 +62,10 @@ class User extends Authenticatable
 
     public function landingRoute(): string
     {
+        if ($this->hasRole('producer') && ! $this->hasPermission('view-operations')) {
+            return 'producer.home';
+        }
+
         return $this->hasPermission('view-operations') || ! $this->hasRole('buyer') ? 'dashboard' : 'marketplace.index';
     }
 

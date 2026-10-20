@@ -186,6 +186,8 @@ class AccessControlTest extends TestCase
         $this->post(route('admin.buyers.approve', $buyer), ['reason' => 'Reintento de prueba'])->assertSessionHas('status');
         $this->assertDatabaseCount('audit_logs', 1);
         $this->assertDatabaseHas('audit_logs', ['actor_id' => $admin->id, 'action' => 'buyer.approved', 'reason' => 'Datos de prueba revisados']);
+        $this->assertSame(1, $owner->notifications()->count());
+        $this->assertStringContainsString('cuenta de comprador fue aprobada', $owner->notifications()->first()->data['body']);
     }
 
     public function test_inactive_buyer_cannot_be_approved(): void

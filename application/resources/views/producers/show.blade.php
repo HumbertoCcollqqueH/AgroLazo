@@ -1,4 +1,5 @@
 <x-layout :title="$producer->full_name">
+    @can('manage-users')<section class="pp-card mb-6"><h2>Acceso del productor a la web y app</h2>@if($producer->user)<p>Cuenta vinculada: {{ $producer->user->email }}. El productor puede gestionar su producción desde su cuenta.</p>@else<p class="mb-4">Crea una cuenta con rol Productor en Usuarios o pídele que se registre. Verifica su identidad antes de vincularla; así conservará sus ofertas y ventas anteriores.</p><form method="POST" action="{{ route('producers.link-account', $producer) }}" class="pp-form">@csrf<x-field name="email" label="Correo de la cuenta del productor" type="email" required /><x-field name="reason" label="Cómo se verificó que la cuenta pertenece al productor" required minlength="10" maxlength="500" /><label class="pp-check"><input type="checkbox" name="identity_confirmed" value="1" required> Verifiqué la identidad del titular y autorizo vincular esta cuenta con su ficha.</label><button class="pp-button">Vincular cuenta verificada</button></form>@endif</section>@endcan
     <a href="{{ route('producers.index') }}" class="text-sm font-semibold underline underline-offset-4">← Volver a productores</a>
     <div class="mb-8 mt-7 flex flex-wrap items-end justify-between gap-4">
         <div class="min-w-0"><p class="text-xs font-bold uppercase tracking-widest text-[#819077]">Ficha privada · Productor #{{ $producer->id }}</p><h1 class="mt-3 break-words text-3xl font-semibold tracking-tight">{{ $producer->full_name }}</h1><p class="mt-3 text-sm text-[#6f7d66]">{{ \App\Models\Producer::TYPES[$producer->type] }}</p></div>
@@ -22,7 +23,7 @@
                     @forelse($producer->products as $product)
                         <span class="rounded-full border border-[#d7e0cd] bg-white px-3 py-1 text-sm">{{ $product->name }}{{ $product->isUsable() ? '' : ' (inactivo)' }}</span>
                     @empty
-                        <p class="text-sm text-[#6f7d66]">Sin productos registrados. Completa este dato en «Editar ficha» para personalizar sus opciones por WhatsApp.</p>
+                        <p class="text-sm text-[#6f7d66]">Sin productos registrados. Completa este dato en «Editar ficha» para personalizar sus opciones en AgroLazo.</p>
                     @endforelse
                 </div>
             </div>
@@ -40,6 +41,7 @@
             </div>
         </section>
         <aside class="space-y-6">
+            @include('producers.partials.payout-profile')
             <section class="rounded-3xl bg-[#254f3b] p-7 text-white">
                 <p class="text-xs font-bold uppercase tracking-widest text-[#bed0af]">Verificación del productor</p>
                 <h2 class="mt-3 text-2xl font-semibold">{{ $producer->canPublishOffers() ? 'Identidad verificada' : 'Aún sin habilitación para ofertas' }}</h2>

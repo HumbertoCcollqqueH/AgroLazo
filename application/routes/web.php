@@ -5,6 +5,7 @@ require __DIR__.'/fulfillment.php';
 require __DIR__.'/payments.php';
 require __DIR__.'/traceability.php';
 require __DIR__.'/reports.php';
+require __DIR__.'/portal.php';
 
 use App\Http\Controllers\Admin\MessagingController;
 use App\Http\Controllers\HomeController;
@@ -14,6 +15,7 @@ use App\Http\Middleware\EnsureActiveUser;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', HomeController::class)->middleware('cache.headers:private;no_store;max_age=0')->name('home');
+Route::get('/app', [HomeController::class, 'mobile'])->middleware('cache.headers:private;no_store;max_age=0')->name('mobile.home');
 Route::get('/dev/status', SystemStatusController::class)->name('dev.status');
 
 Route::get('/dashboard', [ReportController::class, 'dashboard'])

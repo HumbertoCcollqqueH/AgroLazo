@@ -25,7 +25,7 @@
             <p class="mb-5 rounded-xl bg-amber-50 p-4 text-sm font-semibold">{{ \App\Services\OperationalNotifier::testWhatsAppEnabled() ? 'Compra de prueba con avisos reales por WhatsApp etiquetados como PRUEBA. No preparar producto, trasladar mercancía ni transferir dinero.' : 'Compra de prueba: avisos únicamente en el simulador, sin traslado ni pago real.' }}</p>
         @endif
         <p class="text-base font-semibold">{{ $nextStep }}</p>
-        @if($order->requested_delivery_on)<div class="mt-4 rounded-xl bg-emerald-50 p-4 text-sm"><strong>Entrega solicitada: {{ $order->requested_delivery_on->format('d/m/Y') }}</strong><p class="mt-2">Transporte organizado y cubierto por {{ config('app.name') }}. Coordinación confirma el horario; los productores reciben por WhatsApp la fecha solicitada y la programación de recojo.</p></div>@endif
+        @if($order->requested_delivery_on)<div class="mt-4 rounded-xl bg-emerald-50 p-4 text-sm"><strong>Entrega solicitada: {{ $order->requested_delivery_on->format('d/m/Y') }}</strong><p class="mt-2">Transporte organizado y cubierto por {{ config('app.name') }}. Coordinación confirma el horario; los productores reciben en su cuenta la fecha solicitada y la programación de recojo.</p></div>@endif
         <ol class="mt-5 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-5">
             <li><strong>1. Compra confirmada</strong><p class="mt-2 text-[#6f7d66]">Las cantidades compradas quedan comprometidas. Se prepara un aviso con la orden, el producto y la cantidad de cada productor.</p></li>
             <li><strong>2. Acopio programado</strong><p class="mt-2 text-[#6f7d66]">Coordinación confirma lugar, dirección y horario; el sistema envía los detalles de entrega.</p></li>
@@ -85,4 +85,3 @@
         <ol class="space-y-4">@foreach($order->events as $event)<li class="border-l-2 border-[#cdd8c7] pl-4 text-sm"><time class="text-xs text-[#819077]">{{ $event->occurred_at->setTimezone('America/Lima')->format('d/m/Y H:i:s') }}</time><p class="mt-1">{{ config('commerce.event_labels.'.$event->action, 'Actualización registrada') }}</p></li>@endforeach</ol>
     </x-commerce-panel>
 </x-layout>
-

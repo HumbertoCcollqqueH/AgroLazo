@@ -42,6 +42,9 @@ class ProductVisual
     /** @return array{whatsapp_url: ?string, contact_email: ?string} */
     public function support(): array
     {
+        if (config('platform.internal_communication')) {
+            return ['whatsapp_url' => null, 'contact_email' => null];
+        }
         $number = trim((string) config('storefront.whatsapp_number', ''));
         $digits = preg_match('/\A\+?[0-9\s().-]+\z/', $number) === 1 ? preg_replace('/\D/', '', $number) : '';
         $validNumber = preg_match('/\A[1-9][0-9]{7,14}\z/', $digits) === 1;
