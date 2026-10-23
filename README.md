@@ -1,211 +1,270 @@
-# AgroConecta
+<div align="center">
 
-Sistema de comercio agrícola para pequeños productores de Puno, Perú: registro, ofertas, lotes, compras, acopio, entregas, cobros, liquidaciones y trazabilidad. Interfaz en español, moneda PEN y fechas operativas de Perú.
+<a id="agrolazo"></a>
 
-**Estado:** fases 1–6 y 9–19 implementadas y validadas localmente. Las fases 7–8 tienen adaptadores WhatsApp/Evolution y SMS/Twilio; falta comprobarlos con cuentas y teléfonos reales. La fase 20 tiene Docker de producción y un ensayo HTTPS local; todavía no hay servidor, dominio ni despliegue público. Las operaciones demo son sintéticas. El sistema registra cobros y desembolsos revisados por personas, pero no transfiere dinero automáticamente.
+# 🌱 AgroLazo
 
-## Levantar todo con una línea
+### El campo nos une
 
-Con Docker Desktop abierto, desde `E:\VSCODE\Agroconecta`, si esta instalación ya está preparada:
+**Del productor a tu negocio, con origen, coordinación y trazabilidad.**
+
+<p>
+  <a href="https://weights-hierarchy-delays-gathered.trycloudflare.com/downloads/AgroLazo-1.3.3.apk">
+    <img src="https://img.shields.io/badge/Android-Descargar_APK_1.3.3-22583E?style=for-the-badge&logo=android&logoColor=white" alt="Descargar AgroLazo 1.3.3 para Android">
+  </a>
+</p>
+
+**[Descargar la app Android 1.3.3 →](https://weights-hierarchy-delays-gathered.trycloudflare.com/downloads/AgroLazo-1.3.3.apk)**
+
+Android 8.0 o superior · Web y app conectadas al mismo sistema
+
+> **Descarga desde un servidor temporal.** Este enlace requiere que la laptop y su túnel estén activos. No respondió en la comprobación del 22/10/2026. Al reiniciar, Cloudflare puede asignar otra dirección: utiliza la URL y el APK que indique el script de encendido. El archivo todavía no está publicado en GitHub Releases.
+
+<p>
+  <img src="https://img.shields.io/badge/Laravel-13-FF2D20?style=flat-square&logo=laravel&logoColor=white" alt="Laravel 13">
+  <img src="https://img.shields.io/badge/PHP-8.4-777BB4?style=flat-square&logo=php&logoColor=white" alt="PHP 8.4">
+  <img src="https://img.shields.io/badge/PostgreSQL-18-4169E1?style=flat-square&logo=postgresql&logoColor=white" alt="PostgreSQL 18">
+  <img src="https://img.shields.io/badge/Redis-8-DC382D?style=flat-square&logo=redis&logoColor=white" alt="Redis 8">
+  <img src="https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker&logoColor=white" alt="Docker Compose">
+</p>
+
+**[La plataforma](#la-plataforma) · [Perfiles](#cuatro-perfiles-un-mismo-sistema) · [Flujo](#del-campo-a-la-entrega) · [Instalación](#instalación) · [Documentación](#documentación)**
+
+<img src="application/public/images/marketplace/hero-harvest-768.webp" alt="Productos agrícolas andinos y paisaje rural: papa, granos y cultivos del campo peruano" width="900">
+
+<sub>Imagen referencial de la identidad visual de AgroLazo.</sub>
+
+</div>
+
+---
+
+## La plataforma
+
+**AgroLazo conecta a pequeños productores agrícolas con compradores finales**, como restaurantes, hoteles, negocios y hogares. Nace con enfoque en Puno, Perú, y reúne el recorrido comercial en una misma plataforma: publicar producción, reunir aportaciones cercanas, comprar, coordinar el acopio y seguir la entrega.
+
+La web y la app Android comparten cuentas, datos y permisos. Productores y compradores pueden registrarse por su cuenta; el equipo revisa sus perfiles y acompaña las operaciones desde sus paneles.
+
+| 🌾 Producción con contexto | 🛒 Compras claras | 💬 Coordinación integrada |
+| :--- | :--- | :--- |
+| Productos, variedades, cantidades, ubicación y disponibilidad de cada productor. | Catálogo visual, filtros, compras parciales y desglose antes de confirmar. | Conversaciones, avisos y seguimiento dentro de AgroLazo. |
+
+**Idioma:** español · **Moneda:** soles peruanos, PEN · **Horario operativo:** America/Lima
+
+## Cuatro perfiles, un mismo sistema
+
+| Perfil | Qué puede hacer |
+| :--- | :--- |
+| **Productor** | Crear su cuenta, completar su ficha y ubicación, registrar varios cultivos, enviar ofertas con fotografías, aceptar precios y consultar ventas, recojos y liquidaciones. |
+| **Comprador** | Explorar lotes, guardar su destino habitual, cotizar cantidades, elegir fecha de entrega, confirmar compras, adjuntar comprobantes y seguir sus pedidos. Las compras requieren un perfil aprobado. |
+| **Coordinador** | Revisar productores y ofertas, proponer condiciones, consultar aportaciones y mapas, conversar con los usuarios y organizar acopio, pesaje y entregas según sus permisos. |
+| **Administrador** | Gestionar usuarios, accesos, catálogos y configuración; supervisar lotes, operaciones, cobros, liquidaciones, reportes y auditoría. |
+
+Cada usuario consulta la información que corresponde a su rol. Los controles se aplican también en el servidor.
+
+## Del campo a la entrega
+
+1. **Registro y ubicación.** El productor completa su ficha, indica qué produce y marca su ubicación. El comprador puede guardar su dirección habitual y ajustar el destino en cada pedido.
+2. **Oferta y revisión.** El productor registra producto, variedad, calidad, cantidad, disponibilidad y fotos. Coordinación verifica los datos y prepara la propuesta económica, usando una referencia de mercado válida o revisión manual.
+3. **Aceptación y publicación.** El productor confirma las condiciones. El sistema publica y agrupa las aportaciones compatibles cuando cumplen los requisitos, conservando el origen y la cantidad de cada participante.
+4. **Exploración y cotización.** El comprador filtra el catálogo y elige cuánto necesita. La compra mínima predeterminada es **25 kg**, configurable. La cotización muestra los importes y **no reserva inventario por sí sola**.
+5. **Confirmación del pedido.** El comprador revisa las condiciones, la dirección exacta y la fecha solicitada de entrega. La confirmación compromete las cantidades e informa a los productores cuyas aportaciones se utilizarán.
+6. **Acopio y recepción.** El equipo programa los recojos, comunica las instrucciones y registra el peso recibido, aceptado o rechazado. El transporte lo organiza y cubre AgroLazo; la fecha de recojo se coordina por separado de la entrega solicitada.
+7. **Cobro, despacho y entrega.** El comprador registra un pago a AgroLazo y adjunta su comprobante. El equipo verifica el ingreso y gestiona el despacho, la entrega y las posibles incidencias.
+8. **Liquidación y cierre.** Se calcula el importe de cada productor según las cantidades aceptadas y su acuerdo. Administración registra el desembolso y concilia la operación, conservando su historial.
+
+> **Pagos con respaldo real:** una captura de Yape u otro comprobante es evidencia para revisar, no una confirmación bancaria automática. El sistema registra cobros y desembolsos; no transfiere dinero por sí solo.
+
+## Lo que incluye
+
+| Módulo | Funciones principales |
+| :--- | :--- |
+| **Catálogo y tienda** | Imágenes, filtros por producto y características, cantidades disponibles, fechas, precios orientativos y detalle del lote. |
+| **Ofertas y precios** | Revisión de datos, referencias de mercado, propuestas económicas, aceptación del productor y publicación. |
+| **Lotes y cercanía** | Agrupación compatible por producto y condiciones, proximidad geográfica configurable y aportaciones identificadas. |
+| **Ubicación y mapas** | Selección de puntos, búsqueda de zonas, sugerencias de dirección y consulta de comunidades o sectores rurales. |
+| **Conversaciones** | Chat con Laravel Reverb, bandeja separada de avisos y contexto del productor o comprador para el equipo. |
+| **Notificaciones** | Novedades dentro del sistema y avisos del dispositivo cuando están habilitados. La entrega en segundo plano depende de Android y de la conectividad. |
+| **Pedidos y logística** | Cotizaciones, reservas, compras parciales, destinos, fechas, acopio, recepción, despacho y entrega. |
+| **Cobros y liquidaciones** | Yape, Plin, transferencia y otras modalidades configuradas; comprobantes privados, revisión de ingresos y pagos a productores. |
+| **Trazabilidad y reportes** | Historial por operación, ficha pública autorizada con QR y exportaciones privadas en XLSX, CSV y PDF. |
+
+La distancia geográfica ayuda a agrupar productores cercanos; no equivale a una ruta vial ni calcula por sí sola el recorrido del transporte. Las direcciones sugeridas por el mapa se pueden corregir.
+
+## Instalación
+
+El entorno local está preparado para **Windows con Docker Desktop y contenedores Linux**. PHP, Composer, PostgreSQL, Redis y Node.js se ejecutan en contenedores.
+
+### 1. Obtener el proyecto
 
 ```powershell
-docker compose -f docker-compose.yml -f docker-compose.evolution.yml --profile workers --profile mail --profile messaging up -d
+git clone https://github.com/HumbertoCcollqqueH/AgroLazo.git
+cd AgroLazo
 ```
 
-Abre **[AgroConecta](http://localhost:8080)**. Inicia web, PostgreSQL, Redis, worker, scheduler, Mailpit y Evolution con sus servicios privados. No instala dependencias ni aplica actualizaciones pendientes. No necesitas el script en cada arranque.
+### 2. Preparar la instalación
 
-Para **primera instalación o actualizar dependencias, migraciones, configuración y recursos de interfaz**:
+Abre Docker Desktop y ejecuta desde la raíz del repositorio:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\start.ps1
 ```
 
-Requisito: Docker Desktop con contenedores Linux. PHP, Composer y Node.js/npm corren en Docker; no hace falta instalarlos en Windows. El script genera configuración cuando falta, conserva claves, instala dependencias, aplica migraciones, prepara roles/catálogos/cuentas demo, compila la interfaz y comprueba los servicios. También inicia Evolution y sus servicios privados. La primera preparación tarda más por descargas y compilación; no es el tiempo de navegación.
+El script prepara la configuración local, instala dependencias, aplica migraciones, carga roles y catálogos y compila la interfaz. En configuración local también puede crear accesos iniciales. Conserva las claves y cuentas existentes.
 
-Para detener conservando datos: `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\stop.ps1`. No uses `down -v`: elimina volúmenes con datos.
+El arranque actual incluye los servicios de Evolution cuando está presente su archivo Compose. Es una integración heredada; **el recorrido principal utiliza conversaciones y avisos internos**.
 
-## Accesos y destino por rol
+### 3. Abrir la web
 
-Las contraseñas locales están en **`.local/demo-access.txt`**, fuera de Git. Reiniciar conserva las cuentas y contraseñas existentes.
+**[http://localhost:8080](http://localhost:8080)** para la instalación local predeterminada. Si la instalación ya se configuró con un origen público HTTPS, utiliza la dirección vigente que indique el script de encendido.
 
-| Persona | Entrada y funciones |
-|---|---|
-| Visitante | La portada muestra Productos; puede explorar lotes y crear una cuenta de comprador. |
-| Comprador — `comprador@agroconecta.test` | Después de ingresar llega a Productos. Mi cuenta, Compras y Reportes muestran sus propios datos. Comprar requiere aprobación del perfil. |
-| Coordinador — `coordinador@agroconecta.test` | Llega a Administración; atiende productores, ofertas, lotes, conversaciones y operación comercial según sus permisos. |
-| Administrador — `admin@agroconecta.test` | Llega a Administración; además gestiona usuarios, compradores, configuración de WhatsApp, confirmaciones financieras y auditoría. |
-| Productor | El equipo registra su identidad por formulario privado; puede presentar ofertas mediante mensajería habilitada, sin contraseña web. |
+No hay contraseñas publicadas en este README. Los accesos iniciales de desarrollo, cuando se generan, permanecen en `.local/demo-access.txt`, fuera de Git.
 
-Si se solicitó una página protegida antes de ingresar, se conserva ese destino. Los enlaces administrativos se ocultan al comprador y cada ruta comprueba permisos. La recuperación local de contraseña llega a [Mailpit](http://localhost:8025). [Estado del sistema](http://localhost:8080/dev/status) es una herramienta separada de la portada, disponible solo en desarrollo.
+## Encender y apagar
 
-## Conectar WhatsApp y probar desde el teléfono
+Ejecuta estos comandos desde la raíz del proyecto.
 
-Como administrador abre **[WhatsApp](http://localhost:8080/admin/settings/whatsapp)** desde el menú o Administración.
+| Uso | Comando |
+| :--- | :--- |
+| **Encender la web local ya preparada** | `docker compose --profile workers up -d app nginx postgres redis queue scheduler reverb realtime-worker` |
+| **Encender con acceso público desde la laptop** | `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\encender.ps1` |
+| **Apagar conservando los datos** | `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\stop.ps1` |
 
-| Modalidad | Requisitos y funcionamiento |
-|---|---|
-| API oficial de Meta mediante Evolution | Activos de WhatsApp Business, token Meta, Phone Number ID, WABA ID, App Secret y callback HTTPS. No utiliza el QR de dispositivo vinculado. |
-| Evolution / Baileys mediante QR | Un número en WhatsApp y Evolution funcionando. Escanea el QR dentro de AgroConecta. Es una integración no oficial y depende del protocolo de WhatsApp Web. |
+`encender.ps1` utiliza PowerShell 7 y el entorno Android de la laptop: inicia los servicios, prepara el acceso temporal y puede generar un APK nuevo si cambia la dirección. Para usar únicamente la web local, basta el comando Docker de la tabla.
 
-La preferencia anterior era Meta oficial; la petición posterior añadió QR. En esta instalación se creó **agroconecta-qr** y se comprobó el QR dentro de la web. **En la comprobación del 20/09/2026, Evolution devolvió `open` y AgroConecta mostró «WhatsApp conectado». Las respuestas se activaron desde la web para la prueba solicitada con un productor registrado; falta confirmar la entrega real.** La pantalla conserva la modalidad elegida y las claves permanecen en el servidor. En una instalación nueva las respuestas empiezan desactivadas.
+> **Acceso desde otros equipos:** la laptop debe permanecer encendida, conectada a Internet y sin suspenderse. El túnel temporal de Cloudflare puede cambiar de dirección al reiniciarse. Una URL nueva puede requerir iniciar sesión nuevamente y actualizar el APK asociado.
 
-### Pasos para QR
+Para detener el sistema sin borrar su información, utiliza el script de apagado. **No uses `docker compose down -v` si necesitas conservar los datos.**
 
-1. Levanta todos los servicios con la línea de arranque completo.
-2. Selecciona **Vincular con QR mediante Evolution / Baileys** y pulsa **Preparar conexión**. Se prepara en segundo plano y el estado se actualiza en la misma página.
-3. En el teléfono receptor: **WhatsApp → Dispositivos vinculados → Vincular un dispositivo**. Escanea el QR mostrado. Si caduca, pulsa **Revisar conexión / renovar QR**.
-4. Espera **WhatsApp conectado**. Revisa el aviso de uso de datos y activa las respuestas. Conectar por sí solo no activa mensajes.
-5. En **Productores**, registra el número remitente de prueba. Usa el teléfono correcto; un celular peruano de nueve dígitos se normaliza con `+51`. El equipo verifica la identidad antes de permitir ofertas.
-6. Desde ese teléfono registrado envía **HOLA** al receptor; revisa el aviso y responde **ACEPTO**. Remitente y receptor deben ser números distintos: los mensajes propios se ignoran. En **Mensajería** puedes observar el recorrido y probar **VENDER**, **ESTADO**, **AYUDA** y **BAJA**.
+### ¿Qué ocurre si otra persona clona el proyecto?
 
-**Solo contactos registrados:** `MESSAGING_REGISTERED_CONTACTS_ONLY=true` es el valor predeterminado. Un desconocido no crea conversación, mensaje ni respuesta en AgroConecta. Se admiten productores pendientes o verificados; suspendidos, rechazados y archivados se ignoran. Registrar un número no envía un saludo. El cambio de teléfono y la suspensión se comprueban también antes de procesar o enviar respuestas pendientes.
+Cada clon es una **instalación independiente**. Después de preparar el entorno con `start.ps1`, su PC o laptop puede alojar la web, la base de datos y los procesos internos. El comando Docker de arranque local no crea un túnel público por sí solo.
 
-El QR es exclusivo de administradores, se entrega sin caché HTTP y su copia temporal se cifra y caduca. Se ignoran grupos, mensajes propios, historial antiguo, contenido no textual e identificadores LID sin teléfono validable. BAJA revoca el canal. Desactivar respuestas impide nuevos envíos, pero no retira uno en curso o ya enviado.
+Para publicar esa instalación mediante el flujo incluido, debe preparar PowerShell 7, el JDK y el SDK Android, y ejecutar `encender.ps1`. El script conecta su servidor a un túnel temporal de Cloudflare e imprime su propia URL HTTPS. Esa dirección se puede abrir desde otros equipos con Internet mientras su servidor y el túnel estén disponibles.
 
-Al reconectar se recuperan las respuestas bloqueadas por desconexión únicamente cuando consta que no se enviaron; los resultados inciertos requieren conciliación. Un callback QR atrasado no sustituye una conexión ya establecida. Si se pausa antes de entregar el primer aviso, al reactivar se presenta de nuevo el aviso completo antes de aceptar consentimiento.
+Clonar el repositorio no copia los usuarios, pedidos, claves ni la base de datos de otra instalación. Tampoco conserva su dirección de Cloudflare. Para que todas las personas usen **el mismo AgroLazo**, deben acceder a una única instalación compartida.
 
-El outbox conserva las tareas en PostgreSQL y el scheduler las despacha cada minuto. Una respuesta puede requerir dos ciclos, procesamiento y envío; es independiente del tiempo de carga web. Redis y worker deben estar activos. QR necesita Internet en el equipo, pero el teléfono puede escanear localhost sin publicar la web.
+<details>
+<summary><strong>Android: instalación y compilación</strong></summary>
 
-### Opción oficial de Meta
+La app es un cliente Android basado en WebView que utiliza el mismo servidor que la web. No requiere que cada usuario configure una dirección al abrirla.
 
-Configura en `application/.env`: `META_ACCESS_TOKEN`, `META_PHONE_NUMBER_ID`, `META_BUSINESS_ACCOUNT_ID`, `META_APP_SECRET`, `META_VERIFY_TOKEN` y `WHATSAPP_PUBLIC_WEBHOOK_URL`. El callback es `https://tu-dominio/api/v1/webhooks/whatsapp/meta`: requiere HTTPS público y suscripción de la cuenta al campo `messages`.
+- **Versión local disponible:** 1.3.3.
+- **Compatibilidad mínima:** Android 8.0, API 26.
+- **Descarga del APK:** [AgroLazo 1.3.3](https://weights-hierarchy-delays-gathered.trycloudflare.com/downloads/AgroLazo-1.3.3.apk), sujeta a la disponibilidad y dirección del túnel temporal.
+- **Actualizaciones:** instalar sobre la versión anterior, conservando el mismo identificador y la misma llave de firma.
+- **Sesiones:** acceso persistente, cierre de sesión desde la cuenta y autocompletado mediante el gestor de contraseñas de Android.
 
-Actualiza configuración/procesos con `start.ps1` y prepara **API oficial de Meta** desde WhatsApp. «Meta configurado» confirma el aprovisionamiento, no la entrega. Revisa el aviso y activa las respuestas. La configuración exclusivamente por variables, sin conexión creada en la web, usa además `WHATSAPP_ENABLED`, `MESSAGING_LIVE_ENABLED` y `MESSAGING_NOTICE_APPROVED`, falsos por defecto.
-
-Laravel valida la firma original y deduplica cada evento. Los callbacks derivados de Evolution no repiten el procesamiento. Fuera de la ventana de 24 horas, el modo oficial exige una plantilla aprobada configurada en `WHATSAPP_APPROVED_TEMPLATES`. QR no utiliza esas plantillas. Contratos y pasos detallados: [Evolution](docs/evolution.md) y [Mensajería](docs/messaging.md).
-
-### SMS y simulador
-
-Twilio está preparado con firmas, recibos, consentimiento y límites de segmentos; permanece desactivado hasta verificar cuenta, número y recepción bidireccional. No se afirma que cualquier número Twilio reciba SMS desde Perú.
-
-El [simulador](http://localhost:8080/dev/message-simulator) usa el mismo motor y nunca envía mensajes reales. Registra primero el productor/teléfono, y simula HOLA → ACEPTO → VENDER. El antiguo prerregistro abierto sigue disponible cambiando conscientemente `MESSAGING_REGISTERED_CONTACTS_ONLY=false`; no es la configuración actual recomendada.
-
-## Funciones y recorrido completo
-
-| Módulo | Funcionalidad |
-|---|---|
-| Usuarios | Registro, sesiones, recuperación, roles, activación y aprobación auditada de compradores. |
-| Catálogos | Productos, variedades, calidades, unidades, geografía, equivalencias, costos y métodos de pago. Un saco necesita factor aprobado y vigente; no se inventa su peso. |
-| Productores | DNI/teléfono cifrados, duplicados por HMAC, verificación manual, cambios de contacto/ubicación con historial, consentimiento por finalidad, suspensión y archivo. |
-| Ofertas | Cantidad, clasificación, ubicación, disponibilidad, fotos privadas y precio solicitado. Revisión, propuesta económica, aceptación de la versión vigente y publicación. |
-| Lotes | Porciones compatibles, agrupación manual o sugerida, control de saldo/vigencias/acuerdos, publicación, pausa y cancelación. |
-| Productos públicos | Filtros, orden, paginación y disponibilidad actual; estimación sin reserva. No expone identidades ni acuerdos privados. |
-| Cotizaciones y compras | Aportaciones exactas, precio ponderado, cargos desglosados, vencimiento, compra parcial/completa, reservas y ajustes aceptados. Bloqueos e idempotencia evitan duplicados. |
-| Acopio | Puntos, capacidad, horario, planificación, reprogramación y avisos individuales. GPS consentido y opcional; distancia aproximada, no ruta vial. |
-| Logística | Pesajes, aceptado/rechazado, fotos privadas, incidencias, lotes físicos, despachos, entregas, devoluciones y pérdidas. No repone stock automáticamente. |
-| Finanzas | Registro manual de Yape, Plin, transferencia y presencial; evidencias, confirmación de ingresos, devoluciones y resultados inciertos. Liquidaciones por peso aceptado y acuerdo congelado; cierre conciliado. |
-| Trazabilidad | Recorrido privado desde oferta hasta entrega; ficha pública con token revocable y QR local. No publica DNI, teléfono, dirección privada ni acuerdos económicos. |
-| Reportes | Ventas, productores, ofertas, lotes, pagos, liquidaciones, logística, precios y auditoría; filtros y exportación privada a XLSX, CSV y PDF mediante cola. |
-
-Los reportes muestran el estado actual de órdenes confirmadas en el período, no un libro de caja por fecha de movimiento. Las exportaciones caducan en 24 horas y comprueban permisos actuales. Límite: 366 días y 2.000 filas.
-
-`COMMERCE_LIVE_ENABLED=false` mantiene cerrado el comercio real. Los cargos, tributos y receptores demo no deben utilizarse en ventas reales. Verificar productores no garantiza ventas ni sustituye pesaje y entrega. Adjuntar evidencia de pago no confirma dinero.
-
-## Demostración disponible
-
-La orden **[O-7HHTJSCGBM](http://localhost:8080/commerce/orders/1)** conserva el recorrido de **25,125 kg sintéticos** de quinua hasta cierre, liquidación y QR. Total comprador S/ 128,14; neto productor S/ 113,07. Cobros y desembolsos simulados.
-
-El lote **L-CNNSF4LO** conserva 34,875 kg disponibles hasta el **20/09/2026**. Después se oculta de Productos; sus órdenes e historial siguen consultables. Para nuevas pruebas debes crear ofertas/lotes con fechas vigentes. El arranque no crea compras nuevas ni renueva disponibilidades.
-
-`CommerceWalkthroughSeeder` reproduce esa demostración si existen sus cuentas y lote previo; reconoce la orden existente sin duplicarla. El QR de trazabilidad apunta a localhost y es distinto del QR de vinculación WhatsApp. Abrir la ficha desde otro teléfono exige una dirección alcanzable y `APP_URL` coherente; no se ha expuesto la red automáticamente.
-
-## Rendimiento y actualización
-
-Se trasladaron dependencias y cachés PHP desde los montajes Windows a volúmenes Linux; localhost escucha en IPv4 e IPv6 para eliminar la espera de reconexión. HTTP utiliza configuración/rutas compiladas y vistas precompiladas. Nginx comprime respuestas y conserva assets versionados. El menú consulta permisos en conjunto, el catálogo evita consultas repetidas y los reportes agrupan datos por orden antes del cálculo.
-
-No se cachea HTML privado ni stock compartido: disponibilidad, permisos y saldos se comprueban nuevamente. Las exportaciones y la preparación de Evolution corren en segundo plano.
-
-La referencia inicial del catálogo fue aproximadamente **3–7 segundos**. La medición posterior en el navegador integrado, con sesión administrativa, cachés calientes y tres recargas por pantalla, obtuvo:
-
-| Pantalla | Carga completa mínima–máxima |
-|---|---|
-| Productos | 0,174–0,234 s |
-| Administración | 0,201–0,232 s |
-| Reportes | 0,229–0,346 s |
-| Compras | 0,133–0,155 s |
-| Detalle de orden cerrada | 0,216–0,328 s |
-| Productores | 0,132–0,174 s |
-| Ofertas | 0,139–0,142 s |
-| Lotes | 0,133–0,153 s |
-| Mensajería | 0,121–0,164 s |
-| Catálogos | 0,129–0,147 s |
-| Usuarios | 0,175–0,181 s |
-| WhatsApp | 0,134–0,170 s |
-
-Muestra pequeña sobre datos demo, no ensayo de carga ni garantía para otros equipos. **0,25 segundos es el objetivo; todavía no se cumple de forma uniforme**, especialmente en reportes y detalle de orden. La autenticación, inicios en frío, exportaciones y condiciones de red requieren mediciones separadas. TTFB mide el inicio de respuesta; los valores de la tabla son `load`, carga completa del documento y sus recursos, y no deben confundirse con TTFB.
-
-En local, `data-page-timing` del documento contiene Navigation Timing y `Server-Timing` separa aplicación/SQL. No se envía telemetría. Comprueba Network/Performance después de una primera carga y con los tests detenidos.
-
-Después de cambiar rutas o `.env`, regenera las cachés HTTP; `start.ps1` ya lo hace. Para cambios pequeños:
+Para compilar se requieren PowerShell 7, un JDK y las herramientas Android. El script de preparación descarga el SDK en `.local/android-sdk/`:
 
 ```powershell
-docker compose exec -T app env APP_CONFIG_CACHE=/var/www/html/bootstrap/cache/http-config.php php artisan config:cache
-docker compose exec -T app env APP_ROUTES_CACHE=/var/www/html/bootstrap/cache/http-routes.php php artisan route:cache
-docker compose --profile workers restart app queue scheduler
+pwsh -NoProfile -File .\mobile\android\prepare-sdk.ps1
+pwsh -NoProfile -File .\mobile\android\build.ps1 -ServerUrl https://tu-servidor.example -VersionName 1.3.3 -VersionCode 8
 ```
 
-No ejecutes `config:cache` sin indicar el archivo HTTP en desarrollo: pruebas y restauraciones necesitan su propia configuración. Las cachés Linux `php_vendor`, `bootstrap_cache` y `framework_cache` son distintas de los volúmenes persistentes de PostgreSQL, Redis y Evolution. No borres datos para resolver un problema de caché.
+Sustituye el servidor del ejemplo por un origen HTTPS accesible. El APK se genera en `artifacts/android/`. Incrementa la versión y el código en las siguientes entregas.
 
-## Configuración, privacidad y respaldos
+**Distribuye solo el APK firmado.** La llave privada y su respaldo permanecen fuera del repositorio y de las descargas públicas.
 
-`.env` raíz configura Compose; `application/.env` configura Laravel. Las plantillas son `.env.example`; `initialize-environment.ps1` genera secretos locales sin mostrarlos. Conserva **APP_KEY y PRODUCER_LOOKUP_KEY originales**: cambiarlas sin migración rompe el descifrado o búsqueda de identidades. No publiques claves, QR de vinculación, accesos, `.env` ni backups.
+</details>
 
-Evolution dispone de PostgreSQL/Redis separados, sin puertos públicos y con clave interna. Recibe los mensajes de la cuenta antes del filtro de AgroConecta: su almacenamiento también es privado. Filtrar desconocidos en AgroConecta no significa que WhatsApp/Evolution nunca reciban sus mensajes. Un filtro de consola suprime cargas sensibles que Evolution 2.3.7 imprimía fuera de su nivel de log, conservando diagnósticos técnicos.
+## Arquitectura
 
-La web usa sesiones cifradas, CSRF, permisos, validación del Host, CSP y límites de solicitudes. Producción exige HTTPS/cookies seguras y oculta herramientas de desarrollo. La verificación de DNI es manual; no se integró una consulta oficial de identidad.
+```mermaid
+flowchart LR
+    W["Web"] --> N["Nginx"]
+    A["App Android"] --> N
+    N --> L["Laravel · permisos y operación"]
+    L --> P[("PostgreSQL")]
+    L --> R[("Redis")]
+    Q["Colas y tareas programadas"] --> L
+    L --> V["Reverb · eventos en tiempo real"]
+    V --> W
+    V --> A
+```
 
-Respaldo con restauración de comprobación en una base temporal:
+| Capa | Tecnología |
+| :--- | :--- |
+| Aplicación | Laravel 13 y PHP 8.4 |
+| Interfaz | Blade, Tailwind CSS 4, JavaScript y Vite 8 |
+| Persistencia | PostgreSQL 18 |
+| Colas y caché | Redis 8 |
+| Conversaciones en tiempo real | Laravel Reverb y Echo |
+| Cliente móvil | Java, Android WebView y servicios nativos |
+| Infraestructura | Docker Compose y Nginx |
+
+```text
+AgroLazo/
+├── application/
+│   ├── app/                # Dominio, permisos, controladores y servicios
+│   ├── database/           # Migraciones, catálogos y datos de desarrollo
+│   ├── resources/          # Vistas, estilos y JavaScript
+│   ├── routes/             # Web, API, canales y tareas
+│   └── tests/              # Pruebas automatizadas
+├── mobile/android/         # Cliente Android y compilación
+├── docker/                 # Contenedores y configuración
+├── scripts/                # Inicio, apagado, respaldo y validación
+└── docs/                   # Documentación técnica
+```
+
+## Validación y mantenimiento
+
+Desde una instalación preparada:
 
 ```powershell
+# Pruebas automatizadas
+docker compose exec -T app php artisan test --compact
+
+# Compilar la interfaz
+docker compose run --rm --no-deps assets npm run build
+
+# Comprobar servicios y configuración
+docker compose exec -T app php artisan agroconecta:health --wait=75
+docker compose exec -T app php artisan agroconecta:security-check
+
+# Crear un respaldo con restauración de comprobación
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\backup-local.ps1
 ```
 
-Pone brevemente la web en mantenimiento y verifica tablas, campos cifrados y archivos privados. Guarda resultados en `.local/backups/`. Conserva claves por separado y copia externa cifrada. No incluye sesiones/bases de Evolution ni Redis; requieren respaldo propio. No hace falta ejecutarlo para iniciar.
+Las pruebas utilizan `agroconecta_testing`, separada de la base operativa. El proyecto incluye un [workflow de validación](.github/workflows/validate.yml); consulta su ejecución en [GitHub Actions](https://github.com/HumbertoCcollqqueH/AgroLazo/actions).
 
-Última restauración comprobada: `.local/backups/20260920-063520-bb29d16fb64b4e6b8f6d29e2473c58e4/result.json`, resultado correcto, 202 campos descifrados y un archivo privado verificado. La base temporal de comprobación se elimina al terminar.
+El nombre interno `agroconecta` se conserva en algunos comandos, servicios y bases de datos por compatibilidad. La marca de la plataforma es **AgroLazo**.
 
-## Pruebas y diagnóstico
+<details>
+<summary><strong>Configuración y protección de datos</strong></summary>
 
-```powershell
-docker compose exec -T app php artisan test --compact
-docker compose exec -T app php artisan agroconecta:health --wait=75
-docker compose exec -T app php artisan messaging:check
-docker compose exec -T app php artisan agroconecta:security-check
-docker compose exec -T app php artisan migrate:status
-```
+- `.env` en la raíz configura Docker Compose; `application/.env` configura Laravel.
+- Conserva las claves originales `APP_KEY` y `PRODUCER_LOOKUP_KEY`; se necesitan para acceder a datos protegidos.
+- Los secretos, accesos, respaldos y llaves Android deben permanecer fuera de Git.
+- Los comprobantes, identidades y direcciones privadas se consultan según permisos.
+- El sistema incorpora sesiones cifradas, protección CSRF, validación de Host, límites de solicitudes y encabezados de seguridad.
+- Los respaldos locales se guardan en `.local/backups/`. Conserva además una copia externa protegida.
+- Las condiciones comerciales, los receptores de pago, el dominio, los respaldos externos y la capacidad del servidor deben configurarse y validarse antes del lanzamiento.
 
-Los tests usan **agroconecta_testing**, separada de la demo, e interceptan HTTP de proveedores: no envían mensajes. Cubren permisos, cifrado, contactos registrados, QR/webhooks, consentimiento, disponibilidad, concurrencia PostgreSQL, compras, finanzas, trazabilidad y reportes. El caso integral de 220 kg vive exclusivamente en pruebas.
+Las integraciones heredadas de WhatsApp y SMS están documentadas por separado. No son necesarias para conversar ni recibir avisos dentro del sistema.
 
-Suite completa del 20/09/2026: **373 pruebas / 2.206 aserciones correctas**, en `.local/full-performance-whatsapp-tests.log`. Incluye navegación, contacto registrado, QR, reconexión y consentimiento. Pint, compilación Vite en Docker y arranque con diagnóstico de PostgreSQL, Redis, worker, scheduler y Evolution también pasaron. Pruebas locales no equivalen a validar entrega real, SMS o carga de producción. Evidencia histórica: `.local/phases-17-19-full-tests.log` (347 pruebas / 2.032 aserciones).
+</details>
 
-Corrección posterior de Activar respuestas: **42 pruebas / 276 aserciones correctas** en `.local/whatsapp-activation-regression.log`, más comprobación en navegador. La consulta automática de estado ya no cambia la página anterior de la sesión; los errores de validación regresan explícitamente al formulario, conservan el aviso y muestran el motivo en español. Abrir `/admin/settings/whatsapp/status` como página lleva a la configuración; la consulta AJAX sigue recibiendo JSON. La suite completa anterior no incluye estas seis pruebas adicionales.
+## Documentación
 
-Si no aparece QR: revisa Evolution/queue, espera preparación y renueva. Si no responde: revisa conexión, automatización, teléfono habilitado, consentimiento, worker y scheduler; consulta Mensajería. «Aceptado» no significa «entregado». Un envío incierto se concilia antes de repetirlo.
+| Guía | Contenido |
+| :--- | :--- |
+| [Arquitectura](docs/architecture.md) | Componentes, actores y decisiones técnicas. |
+| [Base de datos](docs/database.md) | Modelo y relaciones del sistema. |
+| [Operación local](docs/local-testing.md) | Preparación y recorridos de validación. |
+| [Despliegue](docs/deployment.md) | Infraestructura y consideraciones de publicación. |
+| [Hoja de ruta](docs/roadmap.md) | Fases y criterios de evolución. |
+| [Mensajería](docs/messaging.md) · [Evolution](docs/evolution.md) | Documentación de integraciones heredadas. |
 
-## Producción y pendientes
+Las guías de detalle conservan referencias a etapas anteriores del proyecto; este README presenta el recorrido actual de AgroLazo.
 
-`docker-compose.production.yml` y `docker/production/` construyen imágenes sin montajes de código Windows, con usuario restringido y datos privados separados. Ensayo local:
+---
 
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\production-rehearsal.ps1
-```
+<div align="center">
 
-Usa proyecto/bases propios, puertos 8088/8443 y certificado local de siete días. No altera la demo de 8080 ni instala el certificado en Windows. El ensayo anterior fue verificado; sus servicios se detuvieron para liberar recursos durante las mediciones. Reconstruye para incluir cambios posteriores.
+**AgroLazo · El campo nos une**
 
-Falta validar mensajes reales de WhatsApp con el número ya vinculado, validar Twilio, definir operación comercial real y sus condiciones/receptores, contratar servidor/dominio, preparar HTTPS público, backups externos, monitorización y pruebas de carga. El workflow de GitHub Actions está preparado, pero no se ejecutó en remoto porque no hay repositorio remoto configurado. No existe despliegue/CD público.
+Hecho para conectar la producción de Puno con nuevas oportunidades.
 
-## Código y documentación
+[Volver al inicio ↑](#agrolazo)
 
-Laravel 13, PHP 8.4, PostgreSQL 18, Redis 8, Vite/Tailwind y Evolution 2.3.7 fijado por digest. Dependencias bloqueadas en `composer.lock` y `package-lock.json`; no se añadió una dependencia para estas mejoras.
-
-| Ruta | Contenido |
-|---|---|
-| `application/app/` | Modelos, permisos, controladores, dominio, jobs y comandos. |
-| `application/routes/` | Web, API y scheduler. |
-| `application/resources/` | Blade, CSS y JavaScript. |
-| `application/database/`, `application/tests/` | Migraciones, factories, seeders y pruebas. |
-| `docker/`, `scripts/` | Infraestructura, inicio, respaldo, CI y ensayo de producción. |
-| [Arquitectura](docs/architecture.md) / [Base de datos](docs/database.md) | Actores, módulos, estados y modelo. |
-| [Mensajería](docs/messaging.md) / [Evolution](docs/evolution.md) | Flujos, contratos y conexión. |
-| [Pruebas locales](docs/local-testing.md) | Recorridos y operación detallada. |
-| [Despliegue](docs/deployment.md) / [Fases](docs/roadmap.md) | Producción y criterios de salida. |
+</div>
